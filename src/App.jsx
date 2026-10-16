@@ -21,6 +21,8 @@ const FORMATS = ['codabar', 'code_39', 'code_93', 'code_128', 'ean_8', 'ean_13',
 // puede existir sin soportar formatos y nunca detectar nada. Si hace falta, elegir el motor con
 // (await BarcodeDetector.getSupportedFormats()).length > 0.
 const engine = globalThis.BarcodeDetector ? 'native' : 'zxing-wasm'
+// Modo de prueba: agregar ?debug a la URL marca el área analizada (rojo) y el código detectado (verde)
+const DEBUG = new URLSearchParams(location.search).has('debug')
 // ZXing solo se descarga si hace falta, y arranca al cargar la página: así baja en paralelo con el permiso de cámara.
 // El .wasm se sirve desde nuestro propio servidor en lugar del CDN jsDelivr por defecto.
 const detectorReady = globalThis.BarcodeDetector
@@ -63,6 +65,14 @@ function guideCrop(video, el) {
   }
 }
 
+// Pasa un rectángulo en píxeles del video a píxeles de pantalla (sin zoom), compensando object-fit: cover
+function toScreen(r, video, el) {
+  const s = Math.max(el.clientWidth / video.videoWidth, el.clientHeight / video.videoHeight)
+  const ox = (el.clientWidth - video.videoWidth * s) / 2
+  const oy = (el.clientHeight - video.videoHeight * s) / 2
+  return `left:${ox + r.x * s}px;top:${oy + r.y * s}px;width:${r.width * s}px;height:${r.height * s}px`
+}
+
 // Convierte la posición del código (en píxeles del video) en un transform CSS que lo
 // mueve hacia el centro y lo agranda, compensando el recorte de object-fit: cover.
 // El desplazamiento se limita para que el video siempre cubra la pantalla (sin bordes negros).
@@ -83,6 +93,7 @@ export default function App() {
   const videoRef = useRef(null)
   const viewRef = useRef(null)
   const controls = useRef(null)
+  const debugRef = useRef(null)
   const [locked, setLocked] = useState(null) // código detectado actualmente, o null
   // phase: starting (iniciando) | scanning (escaneando) | result (resultado, con code y format) | error (con message)
   const [state, setState] = useState({ phase: 'starting' })
@@ -106,6 +117,7 @@ export default function App() {
       lock = null
       setLocked(null)
       video.style.transform = ''
+      if (DEBUG) debugRef.current.style.transform = ''
     }
 
     // Se ejecuta en cada frame mientras hay un código detectado: confirma al cumplirse CONFIRM_MS.
@@ -137,6 +149,10 @@ export default function App() {
       if (moved) reset()
       // Directo al DOM: cambia en cada frame y no necesita re-render
       video.style.transform = zoomTransform(box, video, viewRef.current).transform
+      if (DEBUG) {
+        debugRef.current.style.transform = video.style.transform // la capa sigue al zoom del video
+        debugRef.current.querySelector('.debug-box').style.cssText = toScreen(box, video, viewRef.current)
+      }
       if (moved) return
       if (lock?.code === barcode.rawValue) {
         lock.lastSeen = now
@@ -156,6 +172,11 @@ export default function App() {
         try {
           // Analiza solo el área del recuadro: ignora códigos de afuera y es más liviano en iOS
           const crop = guideCrop(video, viewRef.current)
+          if (DEBUG) {
+            debugRef.current.querySelector('.debug-crop').style.cssText = toScreen(crop, video, viewRef.current)
+            viewRef.current.querySelector('.debug-info').textContent =
+              `video ${video.videoWidth}x${video.videoHeight} · crop ${Math.round(crop.width)}x${Math.round(crop.height)}`
+          }
           // Asignar el tamaño reinicia el canvas aunque sea el mismo valor; solo se hace si cambió (p. ej. al rotar)
           const w = Math.round(crop.width)
           const h = Math.round(crop.height)
@@ -226,6 +247,15 @@ export default function App() {
       <div className="viewport" ref={viewRef}>
         {/* ponytail: zoom solo visual; el zoom de la cámara agregaría resolución pero mueve la posición del código */}
         <video ref={videoRef} playsInline muted />
+        {DEBUG && (
+          <>
+            <div className="debug" ref={debugRef} aria-hidden="true">
+              <div className="debug-crop" />
+              <div className="debug-box" />
+            </div>
+            <p className="debug-info" />
+          </>
+        )}
         {phase === 'scanning' && <div className={`guide${locked !== null ? ' locked' : ''}`} aria-hidden="true" />}
         {phase === 'scanning' && locked !== null && (
           <svg className="ring" viewBox="0 0 120 120" aria-hidden="true" style={RING_STYLE}>

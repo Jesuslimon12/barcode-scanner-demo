@@ -194,3 +194,22 @@ test('small hand tremor does not cancel the confirmation', async ({ page }) => {
 
   await expect(page.locator('.code')).toHaveText(CODE, { timeout: 6000 })
 })
+
+test('debug mode outlines the analyzed area over the scan guide', async ({ page }) => {
+  await mockDevice(page, { detector: 'none' }) // real ZXing finds nothing in a blank frame, so the guide stays visible
+  await page.goto('/?debug')
+  await expect(page.locator('.debug-info')).toContainText('video 1280x720')
+
+  const [crop, guide] = await Promise.all(
+    ['.debug-crop', '.guide'].map((s) => page.locator(s).evaluate((el) => el.getBoundingClientRect().toJSON())),
+  )
+  // The red area must match the white guide (border width aside)
+  for (const k of ['x', 'y', 'width', 'height']) expect(Math.abs(crop[k] - guide[k])).toBeLessThan(4)
+})
+
+test('debug overlay is hidden without ?debug', async ({ page }) => {
+  await mockDevice(page)
+  await page.goto('/')
+  await expect(page.getByText('Hold steady…')).toBeVisible()
+  await expect(page.locator('.debug')).toHaveCount(0)
+})

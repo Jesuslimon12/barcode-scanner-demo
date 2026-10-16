@@ -116,3 +116,27 @@ button {
     padding: 16px calc(16px + env(safe-area-inset-right)) 16px 16px;
   }
 }
+
+/* Modo ?debug: misma caja y mismo zoom que el video */
+.debug {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transform-origin: 0 0;
+  transition: transform 300ms ease-out;
+  pointer-events: none;
+}
+.debug-crop, .debug-box { position: absolute; }
+.debug-crop { outline: 2px dashed #ff3b30; }
+.debug-box { outline: 2px solid #34c759; }
+.debug-info {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.6);
+  font: 12px ui-monospace, monospace;
+}
