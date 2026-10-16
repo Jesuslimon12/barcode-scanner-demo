@@ -354,12 +354,13 @@ export default function BarcodeScannerModal({ open, onClose, onScan, debug = fal
         onClose?.()
       }}
     >
-      {open && (
-        <Scanner key={attempt} onScan={onScan} debug={debug} labels={text} onRetry={() => setAttempt((a) => a + 1)} />
-      )}
+      {/* Primero en el DOM: está arriba a la izquierda, así el orden del Tab sigue al visual */}
       <button className="bsm-scanner-close" aria-label={text.close} onClick={() => onClose?.()}>
         ×
       </button>
+      {open && (
+        <Scanner key={attempt} onScan={onScan} debug={debug} labels={text} onRetry={() => setAttempt((a) => a + 1)} />
+      )}
     </dialog>
   )
 }

@@ -211,6 +211,54 @@ test('host styles with common class names do not leak into the scanner', async (
   await expect(page.locator('.bsm-error')).toBeVisible({ timeout: 10000 })
 })
 
+// WCAG contrast ratio between two computed rgb() colors
+const contrast = (a, b) => {
+  const lum = (c) =>
+    c
+      .match(/\d+(\.\d+)?/g)
+      .slice(0, 3)
+      .map((v) => (v / 255 <= 0.03928 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4))
+      .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0)
+  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x)
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+test('the retry button text meets WCAG AA contrast', async ({ page }) => {
+  await mockDevice(page, { failFirst: null })
+  await openScanner(page)
+  const retry = page.getByRole('button', { name: 'Try again' })
+  await expect(retry).toBeVisible({ timeout: 10000 })
+
+  const { color, background } = await retry.evaluate((el) => {
+    const s = getComputedStyle(el)
+    return { color: s.color, background: s.backgroundColor }
+  })
+  expect(contrast(color, background)).toBeGreaterThanOrEqual(4.5)
+})
+
+test('keyboard focus moves from Close to Try again in visual order', async ({ page }) => {
+  await mockDevice(page, { failFirst: null })
+  await page.goto('/')
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible({ timeout: 10000 })
+
+  await page.getByRole('button', { name: 'Close' }).focus()
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeFocused()
+})
+
+test('a host can theme the scanner from any ancestor', async ({ page }) => {
+  await mockDevice(page, { failFirst: null })
+  await page.goto('/')
+  await page.addStyleTag({ content: ':root { --bsm-accent: rgb(10, 20, 200) }' })
+  await page.getByRole('button', { name: 'Scan barcode' }).click()
+  const retry = page.getByRole('button', { name: 'Try again' })
+  await expect(retry).toBeVisible({ timeout: 10000 })
+
+  expect(await retry.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(10, 20, 200)')
+})
+
 test('shows an error instead of a blank screen when rendering crashes', async ({ page }) => {
   // An object is not a valid React child, so rendering the result throws
   await mockDevice(page, { format: { broken: true } })
