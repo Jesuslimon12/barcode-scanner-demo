@@ -1,0 +1,34 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+html,body{width:390px;height:844px;overflow:hidden;background:#1C2B5A;font-family:Archivo,system-ui,sans-serif}
+.feed{position:absolute;inset:0 0 330px;background:linear-gradient(160deg,#3b4258,#1d2235)}
+.guide{position:absolute;left:39px;top:170px;width:312px;height:156px;border:3px solid #fff;border-radius:6px}
+.close{position:absolute;top:56px;right:16px;width:44px;height:44px;border-radius:50%;background:rgb(0 0 0/.5);display:grid;place-items:center}
+.close svg{width:20px;stroke:#fff;stroke-width:2.5;stroke-linecap:round}
+.cp{position:absolute;left:12px;right:12px;bottom:16px;height:330px;background:#fff;color:#1C2B5A;border-radius:6px;padding:0}
+.hd{background:#1C2B5A;color:#fff;margin:8px;padding:10px 12px;font:800 13px Archivo;font-stretch:120%;letter-spacing:.14em;text-transform:uppercase;display:flex;justify-content:space-between}
+.perf{border-top:2px dashed #b7bccb;margin:0 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;margin:8px}
+.f{border:1px solid #c7cbd6;padding:6px 8px;min-height:52px}
+.f b{display:block;font:700 10px Archivo;letter-spacing:.12em;text-transform:uppercase;color:#6b7390}
+.f span{font:700 22px Archivo;font-stretch:70%;color:#5B3A8C}
+.wide{grid-column:1/3}.wide span{font-size:34px}
+.stamp{position:absolute;right:24px;top:120px;transform:rotate(-12deg);border:3px solid #C8102E;color:#C8102E;padding:4px 10px;font:900 20px Archivo;font-stretch:120%;letter-spacing:.1em;opacity:.9}
+.btn{position:absolute;left:20px;right:20px;bottom:20px;height:50px;background:#C8102E;color:#fff;display:grid;place-items:center;font:800 15px Archivo;letter-spacing:.08em;text-transform:uppercase}
+</style></head><body>
+<div class="feed"><div class="guide"></div></div>
+<div class="close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+<div class="cp">
+  <div class="hd"><span>Scan coupon</span><span>01</span></div>
+  <div class="grid">
+    <div class="f"><b>Format</b><span>EAN-13</span></div>
+    <div class="f"><b>Status</b><span>Validated</span></div>
+    <div class="f wide"><b>Code</b><span>7 501055 300075</span></div>
+  </div>
+  <div class="stamp">VALID</div>
+  <div class="btn">Use this code</div>
+</div>
+</body></html>

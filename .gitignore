@@ -29,3 +29,6 @@ dist-ssr
 # Playwright
 test-results
 playwright-report
+
+# Impeccable decision mocks (sketches kept in docs/design/scanner-directions)
+.impeccable/mocks

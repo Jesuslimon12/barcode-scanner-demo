@@ -15,9 +15,10 @@ Redesign round on 2026-10-16 (impeccable new-work, seed:8fa64894f65867a9). The u
 Out: behavior, copy, props.
 
 ## Tasks
-- [ ] T1 Modal restyle in `src/BarcodeScanner.css`. Route: inline (one CSS file, design settled).
-- [ ] T2 Demo page restyle in `src/App.jsx` and `src/index.css`. Route: inline (two small files, mechanical).
-- [ ] T3 PRODUCT.md commitment, DESIGN.md, sketches. Route: inline (passive docs).
+- [x] T1 Modal restyle in `src/BarcodeScanner.css`. Route: inline (one CSS file, design settled). Commit 5304e7d.
+  - Browser round found the demo's `.demo button` rule leaking into the modal's retry button (left-aligned text): the modal now fixes `display`, `padding` and `text-align`; new test `host button styles do not misalign the retry button` (written after the fix, RED not observed). Ring got a drop shadow and a stronger track for bright scenes.
+- [x] T2 Demo page restyle in `src/App.jsx` and `src/index.css`. Route: inline (two small files, mechanical). Demo button rule scoped to `.demo > button`. Commit 0e7bd81.
+- [x] T3 PRODUCT.md commitment, DESIGN.md, sketches, surface brief. Route: inline (passive docs; structural readback).
 
 ## Acceptance criteria
 - Retry text ≥ 4.5:1 on the accent; host `--bsm-accent` still wins.
@@ -30,5 +31,7 @@ Out: behavior, copy, props.
 ## Progress
 Baseline: 31/31 e2e (main at c8b4d4e).
 
+Final: 32/32 e2e, lint clean. Browser (Chrome, mocked camera over a bright scene): scanning, confirming, error and demo result at 393×852, 768×1024 and 1440×900. Not tested on a real device or with a screen reader.
+
 ## Next step
-T1.
+Push and PR are the user's decision.

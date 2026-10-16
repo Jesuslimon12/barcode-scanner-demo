@@ -38,7 +38,7 @@ Scanning runs entirely in the browser: native `BarcodeDetector` when available, 
 
 ## Brand Commitments
 
-None yet. The modal is meant to fit into other people's products, so it ships a neutral default look that host apps can restyle through tokens / CSS variables. Hosts own branding; the component should not impose one.
+The default look is the category standard executed at the craft of the iOS Camera app's code scanning (chosen 2026-10-16 over more distinctive directions, kept in `docs/design/scanner-directions/`): black viewfinder, corner brackets, system yellow for detection, capsule controls. Hosts still restyle it through the `--bsm-*` tokens and own their branding.
 
 ## Evidence on Hand
 
