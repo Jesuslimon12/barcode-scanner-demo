@@ -31,5 +31,12 @@ Evidence (all three tasks, one commit because the CSS changes interleave):
 - GREEN: 24/24 e2e after rebuild; lint clean.
 - Browser (Chromium, emulated camera): at 200% root text, button 32px = panel text 32px, no overflow; debug overlay no longer overlaps Close at 393×852 and 1440×900; reduced motion keeps the video transform `none` with the ring still filling; without it the zoom still applies.
 
+- Commit `ee4b5b0`. RDD: slice `afe5dd7..ee4b5b0` reached the budget (433 lines, medium). Consent granted; one lens (reliability) approved; acknowledged, authority burned (lineage `review-d361785d3f59e93f`). The reviewed boundary is now `ee4b5b0`.
+- Non-blocking follow-ups from the review (not fixed here):
+  - R3-effect-debug-dep (warning): toggling `debug` while open restarts the camera without resetting `state`/`locked`. Fix: remount `Scanner` when `debug` changes (key) and keep the effect mount-only.
+  - R3-error-mapping-coverage (warning): no tests for no-camera, camera-busy, or download-failure messages.
+  - R3-securityerror-mapping (suggestion): `SecurityError` (permissions policy, e.g. iframe without `allow="camera"`) should not suggest browser settings or retry.
+  - R3-labels-and-ssr-unproved (suggestion): no automated test for partial `labels` (an explicit `undefined` erases a default) or for the SSR import.
+
 ## Next step
 `/impeccable colorize` (accent contrast, public tokens), then `clarify`, `polish`.
