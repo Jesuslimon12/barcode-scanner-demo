@@ -173,17 +173,16 @@ test('native engine never downloads ZXing', async ({ page }) => {
   await mockDevice(page)
   await openScanner(page)
 
-  await expect(page.getByText('Engine: native')).toBeVisible()
   await expect(page.getByText('Hold steady…')).toBeVisible()
   expect(zxingRequests).toEqual([])
 })
 
 test('ZXing engine starts downloading the WASM before the camera is ready', async ({ page }) => {
   await mockDevice(page, { detector: 'none', cameraDelayMs: 1500 })
-  await openScanner(page)
+  await openScanner(page, '/?debug')
 
   await expect(page.getByText('Point the camera at a barcode')).toBeVisible({ timeout: 10000 })
-  await expect(page.getByText('Engine: zxing-wasm')).toBeVisible()
+  await expect(page.locator('.bsm-debug-info')).toContainText('zxing-wasm')
   const { wasmStart, cameraReady } = await page.evaluate(() => ({
     wasmStart: performance.getEntriesByType('resource').find((e) => e.name.endsWith('.wasm'))?.startTime,
     cameraReady: window.__cameraReadyAt,
@@ -262,7 +261,7 @@ test('cancels the confirmation while the code keeps moving', async ({ page }) =>
   // 100px on a 200px wide code: well over the tolerance
   await mockDevice(page, { jitter: 100 })
   await openScanner(page)
-  await expect(page.getByText('Engine: native')).toBeVisible()
+  await expect(page.locator('.bsm-guide')).toBeVisible()
 
   // Longer than CONFIRM_MS: a still code would be confirmed by now
   await page.waitForTimeout(4500)
@@ -280,7 +279,7 @@ test('small hand tremor does not cancel the confirmation', async ({ page }) => {
 test('debug mode outlines the analyzed area over the scan guide', async ({ page }) => {
   await mockDevice(page, { detector: 'none' }) // real ZXing finds nothing in a blank frame, so the guide stays visible
   await openScanner(page, '/?debug')
-  await expect(page.locator('.bsm-debug-info')).toContainText('video 1280x720')
+  await expect(page.locator('.bsm-debug-info')).toContainText('zxing-wasm · video 1280x720')
 
   const [crop, guide] = await Promise.all(
     ['.bsm-debug-crop', '.bsm-guide'].map((s) => page.locator(s).evaluate((el) => el.getBoundingClientRect().toJSON())),
@@ -294,4 +293,18 @@ test('debug overlay is hidden without ?debug', async ({ page }) => {
   await openScanner(page)
   await expect(page.getByText('Hold steady…')).toBeVisible()
   await expect(page.locator('.bsm-debug')).toHaveCount(0)
+  // The engine is developer information: end users never see it.
+  // Counted once, not retried: after the confirmation the modal closes and the text would vanish anyway.
+  expect(await page.getByText(/Engine/).count()).toBe(0)
+})
+
+test('with reduced motion the camera feed does not zoom toward the code', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await mockDevice(page)
+  await openScanner(page)
+  await expect(page.getByText('Hold steady…')).toBeVisible()
+
+  expect(await page.locator('video').evaluate((v) => getComputedStyle(v).transform)).toBe('none')
+  // The confirmation ring is progress feedback, so it still animates
+  await expect(page.locator('.bsm-ring-fill')).toBeVisible()
 })

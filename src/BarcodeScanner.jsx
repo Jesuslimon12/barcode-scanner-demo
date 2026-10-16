@@ -223,7 +223,7 @@ function Scanner({ onScan, onRetry, debug, labels }) {
           if (debug) {
             debugRef.current.querySelector('.bsm-debug-crop').style.cssText = toScreen(crop, video, viewRef.current)
             viewRef.current.querySelector('.bsm-debug-info').textContent =
-              `video ${video.videoWidth}x${video.videoHeight} · crop ${Math.round(crop.width)}x${Math.round(crop.height)}`
+              `${globalThis.BarcodeDetector ? 'native' : 'zxing-wasm'} · video ${video.videoWidth}x${video.videoHeight} · crop ${Math.round(crop.width)}x${Math.round(crop.height)}`
           }
           // Asignar el tamaño reinicia el canvas aunque sea el mismo valor; solo se hace si cambió (p. ej. al rotar)
           const w = Math.round(crop.width)
@@ -324,7 +324,6 @@ function Scanner({ onScan, onRetry, debug, labels }) {
             <p>{state.format}</p>
           </>
         )}
-        <p className="bsm-engine">Engine: {globalThis.BarcodeDetector ? 'native' : 'zxing-wasm'}</p>
       </section>
     </>
   )
