@@ -42,5 +42,7 @@ Non-blocking follow-ups from the reviewer:
 - The retry-button test checks display and alignment, not padding.
 - The demo's unused `.demo .error` rule was removed.
 
+- [x] T4 Review follow-ups: `-webkit-mask` fallback; mask moved to `.bsm-guide::before` so the shadow on the box is no longer clipped; retry test also checks padding. Route: inline. 32/32 e2e, lint clean; browser shows the outer shadow on a bright scene. The prefixed mask is not verified on an old engine.
+
 ## Next step
-Decide on the follow-ups; push and PR are the user's decision.
+Push and PR are the user's decision.

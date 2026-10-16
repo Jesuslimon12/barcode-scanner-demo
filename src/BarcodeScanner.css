@@ -65,14 +65,22 @@
   /* 80% del ancho, salvo que no entre en el alto (horizontal): ahí 80% del alto */
   width: min(80cqw, 160cqh);
   aspect-ratio: 2 / 1;
-  /* Solo las cuatro esquinas del borde: la máscara deja ver un cuadrado de --_corner en cada una */
-  --_corner: 36px;
-  border: 4px solid #fff;
-  border-radius: 18px;
-  mask: conic-gradient(at var(--_corner) var(--_corner), #0000 75%, #000 0) 0 0 / calc(100% - var(--_corner)) calc(100% - var(--_corner));
+  /* La sombra va en la caja y la máscara en ::before: si compartieran elemento, la máscara recortaría la sombra */
   filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5)); /* se lee sobre una escena clara */
   pointer-events: none;
   transition: opacity 200ms ease-out;
+}
+/* Solo las cuatro esquinas del borde: la máscara deja ver un cuadrado de --_corner en cada una */
+.bsm-scanner .bsm-guide::before {
+  --_corner: 36px;
+  --_mask: conic-gradient(at var(--_corner) var(--_corner), #0000 75%, #000 0) 0 0 / calc(100% - var(--_corner)) calc(100% - var(--_corner));
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 4px solid #fff;
+  border-radius: 18px;
+  -webkit-mask: var(--_mask); /* Safari < 15.4 y Chromium < 120 solo entienden el prefijo */
+  mask: var(--_mask);
 }
 .bsm-scanner .bsm-guide.bsm-locked { opacity: 0; }
 

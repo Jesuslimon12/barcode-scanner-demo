@@ -259,7 +259,12 @@ test('host button styles do not misalign the retry button', async ({ page }) => 
 
   const retry = page.getByRole('button', { name: 'Try again' })
   await expect(retry).toBeVisible({ timeout: 10000 })
-  expect(await retry.evaluate((el) => [getComputedStyle(el).display, getComputedStyle(el).textAlign])).toEqual(['block', 'center'])
+  expect(
+    await retry.evaluate((el) => {
+      const s = getComputedStyle(el)
+      return [s.display, s.textAlign, s.paddingLeft, s.paddingRight]
+    }),
+  ).toEqual(['block', 'center', '16px', '16px'])
 })
 
 // WCAG contrast ratio between two computed rgb() colors
