@@ -6,9 +6,10 @@ const CODE = '7501234567890'
 // detector: 'none' removes the native API so the app falls back to ZXing WASM.
 // failFirst: number of detect() calls that throw before it starts returning CODE (null = always throws).
 // cameraDelayMs: simulates the time the user takes to grant camera permission.
-async function mockDevice(page, { detector = 'fake', failFirst = 0, cameraDelayMs = 0 } = {}) {
+// format: value reported as the barcode format.
+async function mockDevice(page, { detector = 'fake', failFirst = 0, cameraDelayMs = 0, format = 'ean_13' } = {}) {
   await page.addInitScript(
-    ({ detector, failFirst, cameraDelayMs, CODE }) => {
+    ({ detector, failFirst, cameraDelayMs, format, CODE }) => {
       const canvas = document.createElement('canvas')
       canvas.width = 1280
       canvas.height = 720
@@ -36,11 +37,11 @@ async function mockDevice(page, { detector = 'fake', failFirst = 0, cameraDelayM
           const calls = Number(sessionStorage.getItem('detectCalls') ?? 0)
           sessionStorage.setItem('detectCalls', calls + 1)
           if (failFirst === null || calls < failFirst) throw new Error('decoder crashed')
-          return [{ rawValue: CODE, format: 'ean_13', boundingBox: { x: 100, y: 40, width: 200, height: 60 } }]
+          return [{ rawValue: CODE, format, boundingBox: { x: 100, y: 40, width: 200, height: 60 } }]
         }
       }
     },
-    { detector, failFirst, cameraDelayMs, CODE },
+    { detector, failFirst, cameraDelayMs, format, CODE },
   )
 }
 
@@ -123,4 +124,13 @@ test('ZXing engine starts downloading the WASM before the camera is ready', asyn
     cameraReady: window.__cameraReadyAt,
   }))
   expect(wasmStart).toBeLessThan(cameraReady)
+})
+
+test('shows an error instead of a blank screen when rendering crashes', async ({ page }) => {
+  // An object is not a valid React child, so rendering the result throws
+  await mockDevice(page, { format: { broken: true } })
+  await page.goto('/')
+
+  await expect(page.locator('.error')).toContainText('Something went wrong', { timeout: 10000 })
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
 })

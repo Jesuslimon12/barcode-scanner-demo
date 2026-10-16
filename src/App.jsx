@@ -29,6 +29,9 @@ const detectorReady = globalThis.BarcodeDetector
       }).then(() => BarcodeDetector),
     )
 
+// Circunferencia del anillo (r = 54), usada como stroke-dasharray
+const RING = 2 * Math.PI * 54
+
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
 
 // Traduce el recuadro de la pantalla a coordenadas del video, para que el escáner sepa qué parte de la imagen analizar.
@@ -71,9 +74,9 @@ export default function App() {
   const viewRef = useRef(null)
   const controls = useRef(null)
   const [locked, setLocked] = useState(null) // código detectado actualmente, o null
-  const [phase, setPhase] = useState('starting') // starting (iniciando) | scanning (escaneando) | result (resultado) | error
-  const [result, setResult] = useState(null)
-  const [error, setError] = useState('')
+  // phase: starting (iniciando) | scanning (escaneando) | result (resultado, con code y format) | error (con message)
+  const [state, setState] = useState({ phase: 'starting' })
+  const { phase } = state
 
   useEffect(() => {
     const video = videoRef.current
@@ -109,8 +112,7 @@ export default function App() {
       video.pause()
       navigator.vibrate?.(80)
       // ponytail: llamada al endpoint simulada, agregar aquí fetch(`/api/products/${lock.code}`)
-      setResult({ code: lock.code, format: lock.format })
-      setPhase('result')
+      setState({ phase: 'result', code: lock.code, format: lock.format })
     }
 
     // Se llama cada vez que el detector encuentra un código dentro del recuadro
@@ -154,8 +156,7 @@ export default function App() {
           if (++failures >= MAX_FAILURES) {
             stopped = true
             stream?.getTracks().forEach((t) => t.stop())
-            setError(`Scanner stopped working: ${e?.message ?? e}`)
-            setPhase('error')
+            setState({ phase: 'error', message: `Scanner stopped working: ${e?.message ?? e}` })
             return
           }
         }
@@ -184,14 +185,13 @@ export default function App() {
         const Detector = await detectorReady // en iOS ya viene descargándose desde que cargó la página
         if (stopped) return
         detector = new Detector() // sin formats: acepta todos los formatos soportados
-        setPhase('scanning')
+        setState({ phase: 'scanning' })
         loop()
       })
       .catch((e) => {
         if (stopped) return
         stream?.getTracks().forEach((t) => t.stop())
-        setError(`Scanner unavailable: ${e?.message ?? e}`)
-        setPhase('error')
+        setState({ phase: 'error', message: `Scanner unavailable: ${e?.message ?? e}` })
       })
 
     return () => {
@@ -202,12 +202,9 @@ export default function App() {
   }, [])
 
   function scanAgain() {
-    setResult(null)
-    setPhase('scanning')
+    setState({ phase: 'scanning' })
     controls.current?.scanAgain()
   }
-
-  const ring = 2 * Math.PI * 54
 
   return (
     <main className="app">
@@ -219,7 +216,7 @@ export default function App() {
           <svg className="ring" viewBox="0 0 120 120" aria-hidden="true" style={RING_STYLE}>
             <circle cx="60" cy="60" r="54" className="ring-track" />
             {/* key: un código nuevo remonta el círculo y la animación arranca de cero */}
-            <circle key={locked} cx="60" cy="60" r="54" className="ring-fill" strokeDasharray={ring} />
+            <circle key={locked} cx="60" cy="60" r="54" className="ring-fill" strokeDasharray={RING} />
           </svg>
         )}
       </div>
@@ -231,15 +228,15 @@ export default function App() {
         )}
         {phase === 'error' && (
           <>
-            <p className="error">{error}</p>
+            <p className="error">{state.message}</p>
             {/* Recargar reinicia cámara, lector y estado desde cero */}
             <button onClick={() => location.reload()}>Try again</button>
           </>
         )}
         {phase === 'result' && (
           <>
-            <p className="code">{result.code}</p>
-            <p>{result.format}</p>
+            <p className="code">{state.code}</p>
+            <p>{state.format}</p>
             <p className="success">Endpoint consultado</p>
             <button onClick={scanAgain}>Scan again</button>
           </>
