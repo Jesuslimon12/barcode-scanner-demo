@@ -33,5 +33,14 @@ Baseline: 31/31 e2e (main at c8b4d4e).
 
 Final: 32/32 e2e, lint clean. Browser (Chrome, mocked camera over a bright scene): scanning, confirming, error and demo result at 393×852, 768×1024 and 1440×900. Not tested on a real device or with a screen reader.
 
+## Review
+Assessed medium, `slice_budget_reached` (421 lines, base c8b4d4e). Consent granted; lineage review-00729b1e7b183352 approved and acknowledged (one reliability lens; first capture refused by admission because the reviewer cited "4.5:1" as a path, relaunch admitted).
+
+Non-blocking follow-ups from the reviewer:
+- WARNING: guide uses only unprefixed `mask`; engines needing `-webkit-mask` (Safari < 15.4, Chromium < 120) draw a full rectangle.
+- The guide's drop shadow is clipped on the outer side by the mask.
+- The retry-button test checks display and alignment, not padding.
+- The demo's unused `.demo .error` rule was removed.
+
 ## Next step
-Push and PR are the user's decision.
+Decide on the follow-ups; push and PR are the user's decision.
