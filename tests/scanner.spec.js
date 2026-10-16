@@ -7,9 +7,10 @@ const CODE = '7501234567890'
 // failFirst: number of detect() calls that throw before it starts returning CODE (null = always throws).
 // cameraDelayMs: simulates the time the user takes to grant camera permission.
 // format: value reported as the barcode format.
-async function mockDevice(page, { detector = 'fake', failFirst = 0, cameraDelayMs = 0, format = 'ean_13' } = {}) {
+// jitter: pixels the code shifts sideways on every other frame (simulates a moving phone).
+async function mockDevice(page, { detector = 'fake', failFirst = 0, cameraDelayMs = 0, format = 'ean_13', jitter = 0 } = {}) {
   await page.addInitScript(
-    ({ detector, failFirst, cameraDelayMs, format, CODE }) => {
+    ({ detector, failFirst, cameraDelayMs, format, jitter, CODE }) => {
       const canvas = document.createElement('canvas')
       canvas.width = 1280
       canvas.height = 720
@@ -40,11 +41,11 @@ async function mockDevice(page, { detector = 'fake', failFirst = 0, cameraDelayM
           const calls = Number(sessionStorage.getItem('detectCalls') ?? 0)
           sessionStorage.setItem('detectCalls', calls + 1)
           if (failFirst === null || calls < failFirst) throw new Error('decoder crashed')
-          return [{ rawValue: CODE, format, boundingBox: { x: 100, y: 40, width: 200, height: 60 } }]
+          return [{ rawValue: CODE, format, boundingBox: { x: 100 + (calls % 2) * jitter, y: 40, width: 200, height: 60 } }]
         }
       }
     },
-    { detector, failFirst, cameraDelayMs, format, CODE },
+    { detector, failFirst, cameraDelayMs, format, jitter, CODE },
   )
 }
 
@@ -173,4 +174,23 @@ test('only asks the detector for linear barcodes, not QR or other 2D codes', asy
   const formats = await page.evaluate(() => window.__formats)
   expect(formats).toEqual(expect.arrayContaining(['ean_13', 'code_128']))
   for (const f of ['qr_code', 'data_matrix', 'aztec', 'pdf417']) expect(formats).not.toContain(f)
+})
+
+test('cancels the confirmation while the code keeps moving', async ({ page }) => {
+  // 100px on a 200px wide code: well over the tolerance
+  await mockDevice(page, { jitter: 100 })
+  await page.goto('/')
+  await expect(page.getByText('Engine: native')).toBeVisible()
+
+  // Longer than CONFIRM_MS: a still code would be confirmed by now
+  await page.waitForTimeout(4500)
+  await expect(page.locator('.code')).toHaveCount(0)
+})
+
+test('small hand tremor does not cancel the confirmation', async ({ page }) => {
+  // 10px on a 200px wide code: inside the tolerance
+  await mockDevice(page, { jitter: 10 })
+  await page.goto('/')
+
+  await expect(page.locator('.code')).toHaveText(CODE, { timeout: 6000 })
 })

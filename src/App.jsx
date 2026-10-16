@@ -7,6 +7,7 @@ const RING_STYLE = { '--confirm-ms': `${CONFIRM_MS}ms` }
 // Debe ser menor que CONFIRM_MS; si no, un código perdido igual se confirma. Subir ambos si iOS decodifica muy lento.
 const LOST_MS = 500 // se cancela la detección si el código no se ve durante este tiempo
 const MAX_ZOOM = 3 // zoom máximo permitido
+const MOVE_TOLERANCE = 0.2 // se cancela si el centro del código se aleja más de esta proporción de su ancho
 const MAX_FAILURES = 60 // fallos seguidos del detector (~1-2 s) antes de mostrar un error
 const TARGET_FILL = 0.7 // hacer zoom hasta que el código ocupe esta proporción del ancho de la pantalla
 // Área de escaneo, centrada en la pantalla. Mantener sincronizado con .guide en index.css.
@@ -35,6 +36,13 @@ const detectorReady = globalThis.BarcodeDetector
 const RING = 2 * Math.PI * 54
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
+
+// true si el código se desplazó desde su posición inicial más de lo que tolera el pulso de la mano
+function hasMoved(box, from) {
+  const dx = box.x + box.width / 2 - (from.x + from.width / 2)
+  const dy = box.y + box.height / 2 - (from.y + from.height / 2)
+  return Math.hypot(dx, dy) > MOVE_TOLERANCE * from.width
+}
 
 // Traduce el recuadro de la pantalla a coordenadas del video, para que el escáner sepa qué parte de la imagen analizar.
 // Devuelve { x, y, width, height } en píxeles del video, compensando el recorte de object-fit: cover.
@@ -88,7 +96,7 @@ export default function App() {
     let stream = null
     let stopped = false
     let paused = false
-    let lock = null // código detectado actualmente: { code, format, start (inicio), lastSeen (última vez visto) }
+    let lock = null // código detectado actualmente: { code, format, box (posición inicial), start (inicio), lastSeen (última vez visto) }
     let raf = 0
     let failures = 0 // fallos seguidos del detector
 
@@ -124,15 +132,19 @@ export default function App() {
       const b = barcode.boundingBox
       // La posición viene relativa al recorte; se ajusta a coordenadas del video completo
       const box = { x: b.x + crop.x, y: b.y + crop.y, width: b.width, height: b.height }
+      // Mismo código pero desplazado: se cancela. El próximo frame empieza de nuevo desde la nueva posición.
+      const moved = lock?.code === barcode.rawValue && hasMoved(box, lock.box)
+      if (moved) reset()
       // Directo al DOM: cambia en cada frame y no necesita re-render
       video.style.transform = zoomTransform(box, video, viewRef.current).transform
+      if (moved) return
       if (lock?.code === barcode.rawValue) {
         lock.lastSeen = now
         return
       }
       // Código distinto o primero: reinicia el spinner
       const isNew = !lock
-      lock = { code: barcode.rawValue, format: barcode.format, start: now, lastSeen: now }
+      lock = { code: barcode.rawValue, format: barcode.format, box, start: now, lastSeen: now }
       setLocked(barcode.rawValue)
       if (isNew) raf = requestAnimationFrame(tick)
     }
