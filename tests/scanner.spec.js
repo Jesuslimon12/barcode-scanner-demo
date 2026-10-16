@@ -1,0 +1,126 @@
+import { expect, test } from '@playwright/test'
+
+const CODE = '7501234567890'
+
+// Replaces the camera with a canvas stream and, optionally, the native BarcodeDetector with a fake.
+// detector: 'none' removes the native API so the app falls back to ZXing WASM.
+// failFirst: number of detect() calls that throw before it starts returning CODE (null = always throws).
+// cameraDelayMs: simulates the time the user takes to grant camera permission.
+async function mockDevice(page, { detector = 'fake', failFirst = 0, cameraDelayMs = 0 } = {}) {
+  await page.addInitScript(
+    ({ detector, failFirst, cameraDelayMs, CODE }) => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 1280
+      canvas.height = 720
+      const g = canvas.getContext('2d')
+      setInterval(() => {
+        g.fillStyle = '#556'
+        g.fillRect(0, 0, canvas.width, canvas.height)
+      }, 33)
+      navigator.mediaDevices.getUserMedia = () =>
+        new Promise((resolve) =>
+          setTimeout(() => {
+            window.__cameraReadyAt = performance.now()
+            resolve(canvas.captureStream(30))
+          }, cameraDelayMs),
+        )
+
+      if (detector === 'none') {
+        delete window.BarcodeDetector
+        return
+      }
+      // The count lives in sessionStorage so it survives page reloads within a test
+      window.BarcodeDetector = class {
+        async detect() {
+          await new Promise((r) => setTimeout(r, 10))
+          const calls = Number(sessionStorage.getItem('detectCalls') ?? 0)
+          sessionStorage.setItem('detectCalls', calls + 1)
+          if (failFirst === null || calls < failFirst) throw new Error('decoder crashed')
+          return [{ rawValue: CODE, format: 'ean_13', boundingBox: { x: 100, y: 40, width: 200, height: 60 } }]
+        }
+      }
+    },
+    { detector, failFirst, cameraDelayMs, CODE },
+  )
+}
+
+const cameraIsLive = (page) =>
+  page.evaluate(() => document.querySelector('video').srcObject?.getTracks().some((t) => t.readyState === 'live'))
+
+test('confirms a code only after holding it for the full confirmation time', async ({ page }) => {
+  await mockDevice(page)
+  await page.goto('/')
+
+  await expect(page.getByText('Hold steady…')).toBeVisible()
+  const ring = page.locator('.ring-fill')
+  await expect(ring).toBeVisible()
+  expect(await ring.evaluate((el) => el.getAnimations().map((a) => a.animationName))).toEqual(['ring-fill'])
+
+  // Still confirming halfway through
+  await page.waitForTimeout(1500)
+  await expect(page.locator('.code')).toHaveCount(0)
+
+  await expect(page.locator('.code')).toHaveText(CODE, { timeout: 5000 })
+  await expect(page.getByText('ean_13')).toBeVisible()
+})
+
+test('scan again resumes scanning', async ({ page }) => {
+  await mockDevice(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Scan again' }).click({ timeout: 10000 })
+
+  await expect(page.locator('.code')).toHaveCount(0)
+  await expect(page.getByText('Hold steady…')).toBeVisible()
+})
+
+test('ignores transient detector failures', async ({ page }) => {
+  await mockDevice(page, { failFirst: 10 })
+  await page.goto('/')
+
+  await expect(page.locator('.code')).toHaveText(CODE, { timeout: 10000 })
+  await expect(page.locator('.error')).toHaveCount(0)
+})
+
+test('shows an error and stops the camera when the detector keeps failing', async ({ page }) => {
+  await mockDevice(page, { failFirst: null })
+  await page.goto('/')
+
+  await expect(page.locator('.error')).toHaveText('Scanner stopped working: decoder crashed', { timeout: 10000 })
+  expect(await cameraIsLive(page)).toBe(false)
+})
+
+test('try again recovers after the detector stopped working', async ({ page }) => {
+  // Fails exactly long enough to trigger the error, then works
+  await mockDevice(page, { failFirst: 60 })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Try again' }).click({ timeout: 10000 })
+
+  await expect(page.locator('.error')).toHaveCount(0)
+  await expect(page.locator('.code')).toHaveText(CODE, { timeout: 10000 })
+})
+
+test('native engine never downloads ZXing', async ({ page }) => {
+  const zxingRequests = []
+  page.on('request', (r) => {
+    if (/ponyfill|\.wasm/.test(r.url())) zxingRequests.push(r.url())
+  })
+  await mockDevice(page)
+  await page.goto('/')
+
+  await expect(page.getByText('Engine: native')).toBeVisible()
+  await expect(page.getByText('Hold steady…')).toBeVisible()
+  expect(zxingRequests).toEqual([])
+})
+
+test('ZXing engine starts downloading the WASM before the camera is ready', async ({ page }) => {
+  await mockDevice(page, { detector: 'none', cameraDelayMs: 1500 })
+  await page.goto('/')
+
+  await expect(page.getByText('Point the camera at a barcode')).toBeVisible({ timeout: 10000 })
+  await expect(page.getByText('Engine: zxing-wasm')).toBeVisible()
+  const { wasmStart, cameraReady } = await page.evaluate(() => ({
+    wasmStart: performance.getEntriesByType('resource').find((e) => e.name.endsWith('.wasm'))?.startTime,
+    cameraReady: window.__cameraReadyAt,
+  }))
+  expect(wasmStart).toBeLessThan(cameraReady)
+})

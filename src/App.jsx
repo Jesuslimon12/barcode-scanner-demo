@@ -7,6 +7,7 @@ const RING_STYLE = { '--confirm-ms': `${CONFIRM_MS}ms` }
 // Debe ser menor que CONFIRM_MS; si no, un código perdido igual se confirma. Subir ambos si iOS decodifica muy lento.
 const LOST_MS = 500 // se cancela la detección si el código no se ve durante este tiempo
 const MAX_ZOOM = 3 // zoom máximo permitido
+const MAX_FAILURES = 60 // fallos seguidos del detector (~1-2 s) antes de mostrar un error
 const TARGET_FILL = 0.7 // hacer zoom hasta que el código ocupe esta proporción del ancho de la pantalla
 // Área de escaneo, centrada en la pantalla. Mantener sincronizado con .guide en index.css.
 const GUIDE_WIDTH = 0.8 // proporción del ancho de la pantalla
@@ -84,6 +85,7 @@ export default function App() {
     let paused = false
     let lock = null // código detectado actualmente: { code, format, start (inicio), lastSeen (última vez visto) }
     let raf = 0
+    let failures = 0 // fallos seguidos del detector
 
     // Cancela la detección actual: oculta el spinner y quita el zoom
     const reset = () => {
@@ -137,13 +139,25 @@ export default function App() {
         try {
           // Analiza solo el área del recuadro: ignora códigos de afuera y es más liviano en iOS
           const crop = guideCrop(video, viewRef.current)
-          canvas.width = Math.round(crop.width)
-          canvas.height = Math.round(crop.height)
+          // Asignar el tamaño reinicia el canvas aunque sea el mismo valor; solo se hace si cambió (p. ej. al rotar)
+          const w = Math.round(crop.width)
+          const h = Math.round(crop.height)
+          if (canvas.width !== w) canvas.width = w
+          if (canvas.height !== h) canvas.height = h
           ctx.drawImage(video, crop.x, crop.y, crop.width, crop.height, 0, 0, canvas.width, canvas.height)
           const [barcode] = await detector.detect(canvas)
+          failures = 0 // solo cuenta fallos del detector, no de onDetect
           if (barcode && !paused) onDetect(barcode, crop)
-        } catch {
-          // un frame puede fallar mientras la cámara se estabiliza; se intenta con el siguiente
+        } catch (e) {
+          // Un frame puede fallar mientras la cámara se estabiliza; se intenta con el siguiente.
+          // Si falla MAX_FAILURES veces seguidas, el error es permanente: se avisa en lugar de fallar en silencio.
+          if (++failures >= MAX_FAILURES) {
+            stopped = true
+            stream?.getTracks().forEach((t) => t.stop())
+            setError(`Scanner stopped working: ${e?.message ?? e}`)
+            setPhase('error')
+            return
+          }
         }
       }
       requestAnimationFrame(loop)
@@ -215,7 +229,13 @@ export default function App() {
         {phase === 'scanning' && (
           <p>{locked !== null ? 'Hold steady…' : 'Point the camera at a barcode'}</p>
         )}
-        {phase === 'error' && <p className="error">{error}</p>}
+        {phase === 'error' && (
+          <>
+            <p className="error">{error}</p>
+            {/* Recargar reinicia cámara, lector y estado desde cero */}
+            <button onClick={() => location.reload()}>Try again</button>
+          </>
+        )}
         {phase === 'result' && (
           <>
             <p className="code">{result.code}</p>

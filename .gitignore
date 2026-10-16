@@ -25,3 +25,7 @@ dist-ssr
 
 # Local agent tooling cache
 .atl
+
+# Playwright
+test-results
+playwright-report
