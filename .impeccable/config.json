@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "createdAt": "2026-10-16T23:47:54.178Z",
+        "reason": "agent decision: 'Arial Narrow' is a system-font fallback for the condensed themes; the feature scope rules out web fonts in a distributable component"
+      }
+    ]
+  }
+}
