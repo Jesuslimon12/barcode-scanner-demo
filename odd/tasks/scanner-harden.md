@@ -25,7 +25,9 @@ Out (other audit commands): accent contrast and public tokens (`colorize`), engi
 - [x] T1 SSR-safe module: no `window`/`location` access at import; detector loads on first mount, still before `getUserMedia`; a failed download is retried on "Try again". Route: inline (one non-trivial file, `src/BarcodeScanner.jsx`).
   - Evidence: RED `does not download the ZXing WASM until the scanner opens` failed on HEAD (WASM requested on page load). GREEN 19/19. SSR import via `vite.ssrLoadModule` + `renderToString`: before `location is not defined`, after renders `<dialog class="scanner">…`. Lint clean.
 - [x] T2 `debug` prop instead of reading the host URL; the demo passes it from `?debug`. Merged into T1's commit: removing `DEBUG` from module scope is the same change. Route: inline.
-- [ ] T3 Prefix every class and the keyframe with `bsm-`. Route: inline (mechanical rename across CSS/JSX/tests).
+  - Commit `aa14172`. RDD assess (`--untracked-scope=exclude`, PRODUCT.md untracked): medium, `under_budget` (118 lines), pending in slice.
+- [x] T3 Prefix every class and the keyframe with `bsm-`. Route: inline (mechanical rename across CSS/JSX/tests).
+  - Evidence: RED `host styles with common class names do not leak into the scanner` failed on the pre-T3 build. GREEN 20/20 after rebuild. Lint clean.
 - [ ] T4 Accessible dialog name, `labels` prop, error kinds mapped from camera/detector failures, guard for missing `mediaDevices`. Route: inline (one non-trivial file).
 
 ## Acceptance criteria
@@ -44,4 +46,4 @@ Baseline: 18/18 e2e passing before changes.
 Note: a `vite preview` on port 4174 started outside this session (14:53) is reused by Playwright (`reuseExistingServer`), so the suite skips its own build. Run `npm run build` before `npx playwright test`.
 
 ## Next step
-T3.
+T4.

@@ -1,4 +1,4 @@
-.scanner {
+.bsm-scanner {
   color-scheme: dark;
   font-family: system-ui, -apple-system, sans-serif;
   --accent: #2f9e44;
@@ -7,7 +7,7 @@
   --text: #f2f2f2;
   --muted: #a1a1a6;
   width: 100%;
-  height: 100dvh; /* alto fijo: .viewport necesita un alto definido para cqh */
+  height: 100dvh; /* alto fijo: .bsm-viewport necesita un alto definido para cqh */
   max-width: none;
   max-height: none;
   margin: 0;
@@ -17,11 +17,11 @@
   color: var(--text);
   flex-direction: column;
 }
-.scanner[open] { display: flex; }
-.scanner::backdrop { background: #000; }
-.scanner, .scanner * { box-sizing: border-box; }
+.bsm-scanner[open] { display: flex; }
+.bsm-scanner::backdrop { background: #000; }
+.bsm-scanner, .bsm-scanner * { box-sizing: border-box; }
 
-.scanner .viewport {
+.bsm-scanner .bsm-viewport {
   position: relative;
   flex: 1;
   display: grid;
@@ -31,7 +31,7 @@
   container-type: size; /* permite medir el recuadro con cqw/cqh */
 }
 
-.scanner .viewport video {
+.bsm-scanner .bsm-viewport video {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -42,7 +42,7 @@
 }
 
 /* Mantener sincronizado con GUIDE_WIDTH / GUIDE_RATIO en BarcodeScanner.jsx */
-.scanner .guide {
+.bsm-scanner .bsm-guide {
   position: absolute;
   /* 80% del ancho, salvo que no entre en el alto (horizontal): ahí 80% del alto */
   width: min(80cqw, 160cqh);
@@ -53,9 +53,9 @@
   pointer-events: none;
   transition: opacity 200ms;
 }
-.scanner .guide.locked { opacity: 0; }
+.bsm-scanner .bsm-guide.bsm-locked { opacity: 0; }
 
-.scanner .ring {
+.bsm-scanner .bsm-ring {
   position: absolute;
   width: 96px;
   height: 96px;
@@ -63,31 +63,31 @@
   transform: rotate(-90deg);
 }
 
-.scanner .ring circle { fill: none; stroke-width: 8; }
-.scanner .ring-track { stroke: rgb(255 255 255 / 0.25); }
+.bsm-scanner .bsm-ring circle { fill: none; stroke-width: 8; }
+.bsm-scanner .bsm-ring-track { stroke: rgb(255 255 255 / 0.25); }
 /* --confirm-ms viene de CONFIRM_MS (BarcodeScanner.jsx); 339.29 = circunferencia del círculo (2π · 54) */
-.scanner .ring-fill {
+.bsm-scanner .bsm-ring-fill {
   stroke: var(--accent);
   stroke-linecap: round;
-  animation: ring-fill var(--confirm-ms) linear forwards;
+  animation: bsm-ring-fill var(--confirm-ms) linear forwards;
 }
-@keyframes ring-fill {
+@keyframes bsm-ring-fill {
   from { stroke-dashoffset: 339.29; }
   to { stroke-dashoffset: 0; }
 }
 
-.scanner .panel {
+.bsm-scanner .bsm-panel {
   padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
   background: var(--panel);
   text-align: center;
   min-height: 160px;
 }
 
-.scanner .panel p { margin: 8px 0; color: var(--muted); }
-.scanner .panel .code { font-family: ui-monospace, monospace; color: var(--text); }
-.scanner .panel .error { color: #ff6b6b; }
+.bsm-scanner .bsm-panel p { margin: 8px 0; color: var(--muted); }
+.bsm-scanner .bsm-panel .bsm-code { font-family: ui-monospace, monospace; color: var(--text); }
+.bsm-scanner .bsm-panel .bsm-error { color: #ff6b6b; }
 
-.scanner .panel button {
+.bsm-scanner .bsm-panel button {
   width: 100%;
   min-height: 48px;
   border: 0;
@@ -98,13 +98,13 @@
   font-weight: 600;
 }
 
-.scanner .panel .engine { font-size: 12px; opacity: 0.6; }
-.scanner .panel .code { word-break: break-all; }
+.bsm-scanner .bsm-panel .bsm-engine { font-size: 12px; opacity: 0.6; }
+.bsm-scanner .bsm-panel .bsm-code { word-break: break-all; }
 
 /* Horizontal: el panel va al costado para que la cámara use todo el alto */
 @media (orientation: landscape) {
-  .scanner { flex-direction: row; }
-  .scanner .panel {
+  .bsm-scanner { flex-direction: row; }
+  .bsm-scanner .bsm-panel {
     width: 280px;
     min-height: 0;
     display: flex;
@@ -115,7 +115,7 @@
 }
 
 /* Modo ?debug: misma caja y mismo zoom que el video */
-.scanner .debug {
+.bsm-scanner .bsm-debug {
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -123,10 +123,10 @@
   transition: transform 300ms ease-out;
   pointer-events: none;
 }
-.scanner .debug-crop, .scanner .debug-box { position: absolute; }
-.scanner .debug-crop { outline: 2px dashed #ff3b30; }
-.scanner .debug-box { outline: 2px solid #34c759; }
-.scanner .debug-info {
+.bsm-scanner .bsm-debug-crop, .bsm-scanner .bsm-debug-box { position: absolute; }
+.bsm-scanner .bsm-debug-crop { outline: 2px dashed #ff3b30; }
+.bsm-scanner .bsm-debug-box { outline: 2px solid #34c759; }
+.bsm-scanner .bsm-debug-info {
   position: absolute;
   top: 8px;
   left: 8px;
@@ -139,7 +139,7 @@
 }
 
 /* Define todas sus propiedades para que no le afecten los estilos de botón de la app que lo usa */
-.scanner .scanner-close {
+.bsm-scanner .bsm-scanner-close {
   position: absolute;
   top: calc(8px + env(safe-area-inset-top));
   left: calc(8px + env(safe-area-inset-left));

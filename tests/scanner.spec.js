@@ -65,9 +65,9 @@ test('confirms a code only after holding it for the full confirmation time', asy
   await openScanner(page)
 
   await expect(page.getByText('Hold steady…')).toBeVisible()
-  const ring = page.locator('.ring-fill')
+  const ring = page.locator('.bsm-ring-fill')
   await expect(ring).toBeVisible()
-  expect(await ring.evaluate((el) => el.getAnimations().map((a) => a.animationName))).toEqual(['ring-fill'])
+  expect(await ring.evaluate((el) => el.getAnimations().map((a) => a.animationName))).toEqual(['bsm-ring-fill'])
 
   // Still confirming halfway through
   await page.waitForTimeout(1500)
@@ -91,7 +91,7 @@ test('returns the code to the host, closes the modal and stops the camera', asyn
   await openScanner(page)
 
   await expect(page.locator('.code')).toHaveText(CODE, { timeout: 10000 })
-  await expect(page.locator('dialog.scanner')).toBeHidden()
+  await expect(page.locator('dialog.bsm-scanner')).toBeHidden()
   expect(await streamEnded(page)).toBe(true)
 })
 
@@ -105,7 +105,7 @@ for (const [how, close] of [
     await expect(page.getByText('Hold steady…')).toBeVisible()
 
     await close(page)
-    await expect(page.locator('dialog.scanner')).toBeHidden()
+    await expect(page.locator('dialog.bsm-scanner')).toBeHidden()
     expect(await streamEnded(page)).toBe(true)
     await expect(page.locator('.code')).toHaveCount(0)
   })
@@ -116,14 +116,14 @@ test('ignores transient detector failures', async ({ page }) => {
   await openScanner(page)
 
   await expect(page.locator('.code')).toHaveText(CODE, { timeout: 10000 })
-  await expect(page.locator('.error')).toHaveCount(0)
+  await expect(page.locator('.bsm-error')).toHaveCount(0)
 })
 
 test('shows an error and stops the camera when the detector keeps failing', async ({ page }) => {
   await mockDevice(page, { failFirst: null })
   await openScanner(page)
 
-  await expect(page.locator('.error')).toHaveText('Scanner stopped working: decoder crashed', { timeout: 10000 })
+  await expect(page.locator('.bsm-error')).toHaveText('Scanner stopped working: decoder crashed', { timeout: 10000 })
   expect(await cameraIsLive(page)).toBe(false)
 })
 
@@ -133,7 +133,7 @@ test('try again recovers after the detector stopped working', async ({ page }) =
   await openScanner(page)
   await page.getByRole('button', { name: 'Try again' }).click({ timeout: 10000 })
 
-  await expect(page.locator('.error')).toHaveCount(0)
+  await expect(page.locator('.bsm-error')).toHaveCount(0)
   await expect(page.locator('.code')).toHaveText(CODE, { timeout: 10000 })
 })
 
@@ -175,6 +175,15 @@ test('does not download the ZXing WASM until the scanner opens', async ({ page }
   await expect.poll(() => wasm.length).toBeGreaterThan(0)
 })
 
+test('host styles with common class names do not leak into the scanner', async ({ page }) => {
+  await mockDevice(page, { failFirst: null })
+  await page.goto('/')
+  await page.addStyleTag({ content: '.panel, .error, .guide, .viewport { display: none !important }' })
+  await page.getByRole('button', { name: 'Scan barcode' }).click()
+
+  await expect(page.locator('.bsm-error')).toBeVisible({ timeout: 10000 })
+})
+
 test('shows an error instead of a blank screen when rendering crashes', async ({ page }) => {
   // An object is not a valid React child, so rendering the result throws
   await mockDevice(page, { format: { broken: true } })
@@ -188,11 +197,11 @@ test('in landscape the scan area fits inside the camera view', async ({ page }) 
   await page.setViewportSize({ width: 844, height: 390 })
   await mockDevice(page)
   await openScanner(page)
-  await expect(page.locator('.guide')).toBeVisible()
+  await expect(page.locator('.bsm-guide')).toBeVisible()
 
   const { view, guide } = await page.evaluate(() => ({
-    view: document.querySelector('.viewport').getBoundingClientRect().toJSON(),
-    guide: document.querySelector('.guide').getBoundingClientRect().toJSON(),
+    view: document.querySelector('.bsm-viewport').getBoundingClientRect().toJSON(),
+    guide: document.querySelector('.bsm-guide').getBoundingClientRect().toJSON(),
   }))
   expect(guide.top).toBeGreaterThanOrEqual(view.top)
   expect(guide.bottom).toBeLessThanOrEqual(view.bottom)
@@ -203,10 +212,10 @@ test('in landscape the scan area fits inside the camera view', async ({ page }) 
 test('in portrait the scan area takes 80% of the camera width', async ({ page }) => {
   await mockDevice(page)
   await openScanner(page)
-  await expect(page.locator('.guide')).toBeVisible()
+  await expect(page.locator('.bsm-guide')).toBeVisible()
 
   const ratio = await page.evaluate(
-    () => document.querySelector('.guide').offsetWidth / document.querySelector('.viewport').clientWidth,
+    () => document.querySelector('.bsm-guide').offsetWidth / document.querySelector('.bsm-viewport').clientWidth,
   )
   expect(ratio).toBeCloseTo(0.8, 1)
 })
@@ -243,10 +252,10 @@ test('small hand tremor does not cancel the confirmation', async ({ page }) => {
 test('debug mode outlines the analyzed area over the scan guide', async ({ page }) => {
   await mockDevice(page, { detector: 'none' }) // real ZXing finds nothing in a blank frame, so the guide stays visible
   await openScanner(page, '/?debug')
-  await expect(page.locator('.debug-info')).toContainText('video 1280x720')
+  await expect(page.locator('.bsm-debug-info')).toContainText('video 1280x720')
 
   const [crop, guide] = await Promise.all(
-    ['.debug-crop', '.guide'].map((s) => page.locator(s).evaluate((el) => el.getBoundingClientRect().toJSON())),
+    ['.bsm-debug-crop', '.bsm-guide'].map((s) => page.locator(s).evaluate((el) => el.getBoundingClientRect().toJSON())),
   )
   // The red area must match the white guide (border width aside)
   for (const k of ['x', 'y', 'width', 'height']) expect(Math.abs(crop[k] - guide[k])).toBeLessThan(4)
@@ -256,5 +265,5 @@ test('debug overlay is hidden without ?debug', async ({ page }) => {
   await mockDevice(page)
   await openScanner(page)
   await expect(page.getByText('Hold steady…')).toBeVisible()
-  await expect(page.locator('.debug')).toHaveCount(0)
+  await expect(page.locator('.bsm-debug')).toHaveCount(0)
 })

@@ -164,7 +164,7 @@ function Scanner({ onScan, onRetry, debug }) {
       video.style.transform = zoomTransform(box, video, viewRef.current).transform
       if (debug) {
         debugRef.current.style.transform = video.style.transform // la capa sigue al zoom del video
-        debugRef.current.querySelector('.debug-box').style.cssText = toScreen(box, video, viewRef.current)
+        debugRef.current.querySelector('.bsm-debug-box').style.cssText = toScreen(box, video, viewRef.current)
       }
       if (moved) return
       if (lock?.code === barcode.rawValue) {
@@ -186,8 +186,8 @@ function Scanner({ onScan, onRetry, debug }) {
           // Analiza solo el área del recuadro: ignora códigos de afuera y es más liviano en iOS
           const crop = guideCrop(video, viewRef.current)
           if (debug) {
-            debugRef.current.querySelector('.debug-crop').style.cssText = toScreen(crop, video, viewRef.current)
-            viewRef.current.querySelector('.debug-info').textContent =
+            debugRef.current.querySelector('.bsm-debug-crop').style.cssText = toScreen(crop, video, viewRef.current)
+            viewRef.current.querySelector('.bsm-debug-info').textContent =
               `video ${video.videoWidth}x${video.videoHeight} · crop ${Math.round(crop.width)}x${Math.round(crop.height)}`
           }
           // Asignar el tamaño reinicia el canvas aunque sea el mismo valor; solo se hace si cambió (p. ej. al rotar)
@@ -246,46 +246,46 @@ function Scanner({ onScan, onRetry, debug }) {
 
   return (
     <>
-      <div className="viewport" ref={viewRef}>
+      <div className="bsm-viewport" ref={viewRef}>
         {/* ponytail: zoom solo visual; el zoom de la cámara agregaría resolución pero mueve la posición del código */}
         <video ref={videoRef} playsInline muted />
         {debug && (
           <>
-            <div className="debug" ref={debugRef} aria-hidden="true">
-              <div className="debug-crop" />
-              <div className="debug-box" />
+            <div className="bsm-debug" ref={debugRef} aria-hidden="true">
+              <div className="bsm-debug-crop" />
+              <div className="bsm-debug-box" />
             </div>
-            <p className="debug-info" />
+            <p className="bsm-debug-info" />
           </>
         )}
-        {phase === 'scanning' && <div className={`guide${locked !== null ? ' locked' : ''}`} aria-hidden="true" />}
+        {phase === 'scanning' && <div className={`bsm-guide${locked !== null ? ' bsm-locked' : ''}`} aria-hidden="true" />}
         {phase === 'scanning' && locked !== null && (
-          <svg className="ring" viewBox="0 0 120 120" aria-hidden="true" style={RING_STYLE}>
-            <circle cx="60" cy="60" r="54" className="ring-track" />
+          <svg className="bsm-ring" viewBox="0 0 120 120" aria-hidden="true" style={RING_STYLE}>
+            <circle cx="60" cy="60" r="54" className="bsm-ring-track" />
             {/* key: un código nuevo remonta el círculo y la animación arranca de cero */}
-            <circle key={locked} cx="60" cy="60" r="54" className="ring-fill" strokeDasharray={RING} />
+            <circle key={locked} cx="60" cy="60" r="54" className="bsm-ring-fill" strokeDasharray={RING} />
           </svg>
         )}
       </div>
 
-      <section className="panel" aria-live="polite">
+      <section className="bsm-panel" aria-live="polite">
         {phase === 'starting' && <p>Starting camera…</p>}
         {phase === 'scanning' && (
           <p>{locked !== null ? 'Hold steady…' : 'Point the camera at a barcode'}</p>
         )}
         {phase === 'error' && (
           <>
-            <p className="error">{state.message}</p>
+            <p className="bsm-error">{state.message}</p>
             <button onClick={onRetry}>Try again</button>
           </>
         )}
         {phase === 'result' && (
           <>
-            <p className="code">{state.code}</p>
+            <p className="bsm-code">{state.code}</p>
             <p>{state.format}</p>
           </>
         )}
-        <p className="engine">Engine: {globalThis.BarcodeDetector ? 'native' : 'zxing-wasm'}</p>
+        <p className="bsm-engine">Engine: {globalThis.BarcodeDetector ? 'native' : 'zxing-wasm'}</p>
       </section>
     </>
   )
@@ -307,14 +307,14 @@ export default function BarcodeScannerModal({ open, onClose, onScan, debug = fal
   return (
     <dialog
       ref={dialogRef}
-      className="scanner"
+      className="bsm-scanner"
       onCancel={(e) => {
         e.preventDefault() // Escape: el padre decide si se cierra, a través de open
         onClose?.()
       }}
     >
       {open && <Scanner key={attempt} onScan={onScan} debug={debug} onRetry={() => setAttempt((a) => a + 1)} />}
-      <button className="scanner-close" aria-label="Close" onClick={() => onClose?.()}>
+      <button className="bsm-scanner-close" aria-label="Close" onClick={() => onClose?.()}>
         ×
       </button>
     </dialog>
