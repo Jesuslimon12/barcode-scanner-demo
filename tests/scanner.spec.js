@@ -134,3 +134,30 @@ test('shows an error instead of a blank screen when rendering crashes', async ({
   await expect(page.locator('.error')).toContainText('Something went wrong', { timeout: 10000 })
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
 })
+
+test('in landscape the scan area fits inside the camera view', async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 })
+  await mockDevice(page)
+  await page.goto('/')
+  await expect(page.locator('.guide')).toBeVisible()
+
+  const { view, guide } = await page.evaluate(() => ({
+    view: document.querySelector('.viewport').getBoundingClientRect().toJSON(),
+    guide: document.querySelector('.guide').getBoundingClientRect().toJSON(),
+  }))
+  expect(guide.top).toBeGreaterThanOrEqual(view.top)
+  expect(guide.bottom).toBeLessThanOrEqual(view.bottom)
+  // The camera keeps most of the screen instead of sharing it with a tall panel
+  expect(view.width * view.height).toBeGreaterThan(844 * 390 * 0.6)
+})
+
+test('in portrait the scan area takes 80% of the camera width', async ({ page }) => {
+  await mockDevice(page)
+  await page.goto('/')
+  await expect(page.locator('.guide')).toBeVisible()
+
+  const ratio = await page.evaluate(
+    () => document.querySelector('.guide').offsetWidth / document.querySelector('.viewport').clientWidth,
+  )
+  expect(ratio).toBeCloseTo(0.8, 1)
+})

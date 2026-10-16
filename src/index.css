@@ -19,7 +19,7 @@ body {
 .app {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  height: 100dvh; /* alto fijo: .viewport necesita un alto definido para cqh */
 }
 
 .viewport {
@@ -29,6 +29,7 @@ body {
   place-items: center;
   overflow: hidden;
   background: #000;
+  container-type: size; /* permite medir el recuadro con cqw/cqh */
 }
 
 .viewport video {
@@ -44,7 +45,8 @@ body {
 /* Mantener sincronizado con GUIDE_WIDTH / GUIDE_RATIO en App.jsx */
 .guide {
   position: absolute;
-  width: 80%;
+  /* 80% del ancho, salvo que no entre en el alto (horizontal): ahí 80% del alto */
+  width: min(80cqw, 160cqh);
   aspect-ratio: 2 / 1;
   border: 3px solid rgb(255 255 255 / 0.8);
   border-radius: 16px;
@@ -101,3 +103,16 @@ button {
 .panel .engine { font-size: 12px; opacity: 0.6; }
 .panel .success { color: var(--accent); font-weight: 600; }
 .panel .code { word-break: break-all; }
+
+/* Horizontal: el panel va al costado para que la cámara use todo el alto */
+@media (orientation: landscape) {
+  .app { flex-direction: row; }
+  .panel {
+    width: 280px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 16px calc(16px + env(safe-area-inset-right)) 16px 16px;
+  }
+}

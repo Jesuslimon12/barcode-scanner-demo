@@ -40,7 +40,7 @@ function guideCrop(video, el) {
   const W = el.clientWidth
   const H = el.clientHeight
   const s = Math.max(W / video.videoWidth, H / video.videoHeight)
-  const gw = GUIDE_WIDTH * W
+  const gw = Math.min(GUIDE_WIDTH * W, GUIDE_WIDTH * GUIDE_RATIO * H) // igual que el min() de .guide
   const gh = gw / GUIDE_RATIO
   const toVideo = (px, size, vSize) => (px - (size - vSize * s) / 2) / s
   const x = clamp(toVideo((W - gw) / 2, W, video.videoWidth), 0, video.videoWidth)
@@ -110,7 +110,8 @@ export default function App() {
       }
       paused = true
       video.pause()
-      navigator.vibrate?.(80)
+      // ponytail: vibración desactivada; no existe en iOS y en Android requiere que el usuario haya tocado la página.
+      // Para activarla: navigator.vibrate?.(80)
       // ponytail: llamada al endpoint simulada, agregar aquí fetch(`/api/products/${lock.code}`)
       setState({ phase: 'result', code: lock.code, format: lock.format })
     }
