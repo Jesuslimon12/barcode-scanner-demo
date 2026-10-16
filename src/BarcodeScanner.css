@@ -224,3 +224,161 @@
   outline: 2px solid var(--_text);
   outline-offset: 2px;
 }
+
+/*
+  Temas (prop theme → data-theme). Cada uno cambia los valores por defecto de --_*, así los --bsm-* de la app siguen mandando.
+  Un valor desconocido no coincide con ninguno y queda el estilo estándar. La caja de .bsm-guide no cambia: la detección recorta con ella.
+*/
+
+/* La X en blanco sobre la cámara: --_text es oscuro en los temas de panel claro */
+.bsm-scanner:is([data-theme='shelf'], [data-theme='receipt'], [data-theme='datamatics'], [data-theme='coupon']) .bsm-scanner-close:focus-visible {
+  outline-color: #fff;
+}
+/* Guía de rectángulo completo: sin máscara de esquinas */
+.bsm-scanner:is([data-theme='receipt'], [data-theme='datamatics'], [data-theme='coupon']) .bsm-guide::before {
+  -webkit-mask: none;
+  mask: none;
+}
+
+/* Shelf: cinta amarilla del borde de la góndola, el código como etiqueta de precio */
+.bsm-scanner[data-theme='shelf'] {
+  --_accent: var(--bsm-accent, #141414);
+  --_on-accent: var(--bsm-on-accent, #ffd60a); /* 13:1 */
+  --_background: var(--bsm-background, #141414);
+  --_surface: var(--bsm-surface, #ffd60a);
+  --_text: var(--bsm-text, #141414);
+  --_text-muted: var(--bsm-text-muted, #4a4a44); /* 6.3:1 sobre el amarillo */
+  --_danger: var(--bsm-danger, #b3120a); /* el rojo de oferta (#d7261e) no llega a 4.5:1 sobre amarillo */
+  color-scheme: light;
+}
+.bsm-scanner[data-theme='shelf'] .bsm-panel { border-top: 4px solid var(--_text); }
+.bsm-scanner[data-theme='shelf'] .bsm-panel .bsm-error { font-weight: 700; }
+/* El anillo va sobre la cámara: la tinta no se vería, el amarillo sí */
+.bsm-scanner[data-theme='shelf'] .bsm-ring-fill { stroke: var(--_on-accent); }
+.bsm-scanner[data-theme='shelf'] .bsm-panel .bsm-code {
+  padding: 8px 12px;
+  border: 2px solid var(--_text);
+  background: #fafaf7;
+  box-shadow: 0 6px 0 var(--_text);
+  font-family: 'Arial Narrow', 'Helvetica Neue', system-ui, sans-serif;
+  font-stretch: condensed;
+  font-weight: 900;
+  font-size: 2.5em;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+.bsm-scanner[data-theme='shelf'] .bsm-panel button {
+  border-radius: var(--bsm-radius, 2px);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Receipt: papel térmico con el borde de arriba cortado, todo en monoespaciada */
+.bsm-scanner[data-theme='receipt'] {
+  --_accent: var(--bsm-accent, #2b2b2b);
+  --_on-accent: var(--bsm-on-accent, #f4f1ea); /* 12.6:1 */
+  --_background: var(--bsm-background, #1b1b1a);
+  --_surface: var(--bsm-surface, #f4f1ea);
+  --_text: var(--bsm-text, #2b2b2b);
+  --_text-muted: var(--bsm-text-muted, #6b6b66); /* el gris del boceto (#8a8a85) da 3:1 */
+  --_danger: var(--bsm-danger, #c23b22); /* 4.7:1 */
+  color-scheme: light;
+  font-family: var(--bsm-font, ui-monospace, Menlo, monospace);
+}
+/* El margen de arriba deja lugar a los dientes del corte */
+.bsm-scanner[data-theme='receipt'] .bsm-panel { position: relative; margin: 8px 16px 0; }
+.bsm-scanner[data-theme='receipt'] .bsm-panel::before {
+  content: '';
+  position: absolute;
+  inset: -8px 0 auto;
+  height: 8px;
+  background:
+    linear-gradient(-45deg, var(--_surface) 4px, #0000 0) 0 0 / 8px 8px,
+    linear-gradient(45deg, var(--_surface) 4px, #0000 0) 0 0 / 8px 8px;
+}
+.bsm-scanner[data-theme='receipt'] .bsm-guide::before {
+  border: 2px dashed rgb(244 241 234 / 0.8);
+  border-radius: 0;
+}
+.bsm-scanner[data-theme='receipt'] .bsm-panel .bsm-code {
+  padding: 8px 0;
+  border-block: 1px dashed var(--_text-muted);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 1.5em;
+}
+.bsm-scanner[data-theme='receipt'] .bsm-panel button {
+  border-radius: var(--bsm-radius, 0);
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Datamatics: solo blanco y negro. El error no tiene color propio: se marca en negrita y en bloque invertido */
+.bsm-scanner[data-theme='datamatics'] {
+  --_accent: var(--bsm-accent, #000);
+  --_on-accent: var(--bsm-on-accent, #fff);
+  --_background: var(--bsm-background, #000);
+  --_surface: var(--bsm-surface, #fff);
+  --_text: var(--bsm-text, #000);
+  --_text-muted: var(--bsm-text-muted, #000);
+  --_danger: var(--bsm-danger, #000);
+  color-scheme: light;
+  font-family: var(--bsm-font, ui-monospace, Menlo, monospace);
+}
+.bsm-scanner[data-theme='datamatics'] .bsm-guide::before {
+  border: 1px solid #fff;
+  border-radius: 0;
+}
+.bsm-scanner[data-theme='datamatics'] .bsm-ring-fill { stroke: #fff; stroke-linecap: butt; }
+.bsm-scanner[data-theme='datamatics'] .bsm-scanner-close { border: 1px solid #fff; border-radius: 0; }
+.bsm-scanner[data-theme='datamatics'] .bsm-panel .bsm-error {
+  padding: 8px 12px;
+  background: var(--_danger);
+  color: var(--_surface);
+  font-weight: 700;
+}
+.bsm-scanner[data-theme='datamatics'] .bsm-panel .bsm-code {
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 2em;
+}
+.bsm-scanner[data-theme='datamatics'] .bsm-panel button {
+  border-radius: var(--bsm-radius, 0);
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Coupon: tarjeta blanca de cupón sobre azul marino, código en violeta de carbónico, rojo para actuar y para errores */
+.bsm-scanner[data-theme='coupon'] {
+  --_accent: var(--bsm-accent, #c8102e);
+  --_on-accent: var(--bsm-on-accent, #fff); /* 5.9:1 */
+  --_background: var(--bsm-background, #1c2b5a);
+  --_surface: var(--bsm-surface, #fff);
+  --_text: var(--bsm-text, #1c2b5a);
+  --_text-muted: var(--bsm-text-muted, #6b7390); /* 4.7:1 */
+  --_danger: var(--bsm-danger, #c8102e);
+  color-scheme: light;
+}
+.bsm-scanner[data-theme='coupon'] .bsm-panel { margin: 12px; border-radius: 6px; }
+.bsm-scanner[data-theme='coupon'] .bsm-guide::before {
+  border: 3px solid #fff;
+  border-radius: 6px;
+}
+.bsm-scanner[data-theme='coupon'] .bsm-panel .bsm-code {
+  color: #5b3a8c;
+  font-family: 'Arial Narrow', 'Helvetica Neue', system-ui, sans-serif;
+  font-stretch: condensed;
+  font-weight: 700;
+  font-size: 2em;
+}
+.bsm-scanner[data-theme='coupon'] .bsm-panel button {
+  border-radius: var(--bsm-radius, 4px);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}

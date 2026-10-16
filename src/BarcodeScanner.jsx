@@ -333,7 +333,8 @@ function Scanner({ onScan, onRetry, debug, labels }) {
 // open lo controla el padre; onClose se llama al tocar la X o con Escape. La cámara solo se enciende mientras está abierto.
 // debug marca el área analizada (rojo) y el código detectado (verde); la app decide cuándo activarlo.
 // labels reemplaza cualquier texto de DEFAULT_LABELS, p. ej. labels={{ title: 'Escanear código' }}.
-export default function BarcodeScannerModal({ open, onClose, onScan, debug = false, labels }) {
+// theme elige el estilo: 'standard' (cámara de iOS), 'shelf', 'receipt', 'datamatics' o 'coupon'; los tokens --bsm-* de la app siguen mandando.
+export default function BarcodeScannerModal({ open, onClose, onScan, debug = false, labels, theme = 'standard' }) {
   const dialogRef = useRef(null)
   // Las claves con valor undefined (p. ej. una traducción que falta) conservan el texto por defecto
   const text = { ...DEFAULT_LABELS, ...Object.fromEntries(Object.entries(labels ?? {}).filter(([, v]) => v != null)) }
@@ -349,6 +350,7 @@ export default function BarcodeScannerModal({ open, onClose, onScan, debug = fal
     <dialog
       ref={dialogRef}
       className="bsm-scanner"
+      data-theme={theme}
       aria-label={text.title}
       onCancel={(e) => {
         e.preventDefault() // Escape: el padre decide si se cierra, a través de open

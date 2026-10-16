@@ -295,6 +295,8 @@ test('the retry button text meets WCAG AA contrast', async ({ page }) => {
 test('keyboard focus moves from Close to Try again in visual order', async ({ page }) => {
   await mockDevice(page, { failFirst: null })
   await page.goto('/')
+  // The style picker comes first and is a single Tab stop (arrows move between its radios)
+  await page.keyboard.press('Tab')
   await page.keyboard.press('Tab')
   await page.keyboard.press('Enter')
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible({ timeout: 10000 })
@@ -411,4 +413,72 @@ test('with reduced motion the camera feed does not zoom toward the code', async 
   expect(await page.locator('video').evaluate((v) => getComputedStyle(v).transform)).toBe('none')
   // The confirmation ring is progress feedback, so it still animates
   await expect(page.locator('.bsm-ring-fill')).toBeVisible()
+})
+
+// Opens the demo page, picks a scanner style by its label and opens the scanner
+async function openThemed(page, style) {
+  await page.goto('/')
+  await page.getByLabel(style, { exact: true }).check()
+  await page.getByRole('button', { name: 'Scan barcode' }).click()
+}
+
+// Background actually painted behind an element: its own or the nearest ancestor's that is not transparent
+const paintedBackground = (locator) =>
+  locator.evaluate((el) => {
+    for (let n = el; n; n = n.parentElement) {
+      const bg = getComputedStyle(n).backgroundColor
+      if (!/^rgba\(.*, 0\)$|^transparent$/.test(bg)) return bg
+    }
+    return 'rgb(255, 255, 255)'
+  })
+
+test('the scanner uses the standard theme unless the host picks another', async ({ page }) => {
+  await mockDevice(page)
+  await openScanner(page)
+
+  await expect(page.locator('dialog.bsm-scanner')).toHaveAttribute('data-theme', 'standard')
+})
+
+for (const style of ['Standard', 'Shelf', 'Receipt', 'Datamatics', 'Coupon']) {
+  test(`the ${style} theme keeps the retry button and error text at WCAG AA`, async ({ page }) => {
+    await mockDevice(page, { failFirst: null })
+    await openThemed(page, style)
+    const retry = page.getByRole('button', { name: 'Try again' })
+    await expect(retry).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('dialog.bsm-scanner')).toHaveAttribute('data-theme', style.toLowerCase())
+
+    const button = await retry.evaluate((el) => {
+      const s = getComputedStyle(el)
+      return { color: s.color, background: s.backgroundColor }
+    })
+    expect(contrast(button.color, button.background)).toBeGreaterThanOrEqual(4.5)
+
+    const error = page.locator('.bsm-error')
+    const errorColor = await error.evaluate((el) => getComputedStyle(el).color)
+    expect(contrast(errorColor, await paintedBackground(error))).toBeGreaterThanOrEqual(4.5)
+  })
+}
+
+test('a host token still wins over a built-in theme', async ({ page }) => {
+  await mockDevice(page, { failFirst: null })
+  await page.goto('/')
+  await page.addStyleTag({ content: ':root { --bsm-accent: rgb(10, 20, 200) }' })
+  await page.getByLabel('Receipt', { exact: true }).check()
+  await page.getByRole('button', { name: 'Scan barcode' }).click()
+  const retry = page.getByRole('button', { name: 'Try again' })
+  await expect(retry).toBeVisible({ timeout: 10000 })
+
+  expect(await retry.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(10, 20, 200)')
+})
+
+test('themes with their own accent change the retry button', async ({ page }) => {
+  await mockDevice(page, { failFirst: null })
+  const retryBackground = async (style) => {
+    await openThemed(page, style)
+    const retry = page.getByRole('button', { name: 'Try again' })
+    await expect(retry).toBeVisible({ timeout: 10000 })
+    return retry.evaluate((el) => getComputedStyle(el).backgroundColor)
+  }
+
+  expect(await retryBackground('Shelf')).not.toBe(await retryBackground('Standard'))
 })
