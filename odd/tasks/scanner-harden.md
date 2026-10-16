@@ -32,6 +32,7 @@ Out (other audit commands): accent contrast and public tokens (`colorize`), engi
 - [x] T4 Accessible dialog name, `labels` prop, error kinds mapped from camera/detector failures, guard for missing `mediaDevices`. Route: inline (one non-trivial file).
   - Evidence: RED on 4 tests (detector-stopped copy, denied permission, missing `mediaDevices` crashed into the demo ErrorBoundary, unnamed dialog). GREEN 23/23. SSR render with `labels={{ title: 'Escanear código', close: 'Cerrar' }}` outputs both. Browser check (Chromium, emulated camera) at 393×852, 852×393, 768×1024, 1440×900: no horizontal scroll, no panel overflow, no page errors. That check found "Try again" useless on the unsupported error; it is now hidden there (covered by the test).
   - Raw errors go to `console.error` for developers; users only see the mapped copy.
+  - Commit `48048a7`. RDD assess over the slice `afe5dd7..48048a7`: medium, `under_budget` (354 lines), no review due; the slice stays pending until a later commit reaches the ~400-line budget.
 
 ## Acceptance criteria
 - Importing the module touches no browser global.
