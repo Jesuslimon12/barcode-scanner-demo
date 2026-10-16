@@ -1,0 +1,103 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, sans-serif;
+  --accent: #2f9e44;
+  --bg: #111;
+  --panel: #1c1c1e;
+  --text: #f2f2f2;
+  --muted: #a1a1a6;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.viewport {
+  position: relative;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #000;
+}
+
+.viewport video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: 0 0;
+  transition: transform 300ms ease-out;
+}
+
+/* Mantener sincronizado con GUIDE_WIDTH / GUIDE_RATIO en App.jsx */
+.guide {
+  position: absolute;
+  width: 80%;
+  aspect-ratio: 2 / 1;
+  border: 3px solid rgb(255 255 255 / 0.8);
+  border-radius: 16px;
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.45);
+  pointer-events: none;
+  transition: opacity 200ms;
+}
+.guide.locked { opacity: 0; }
+
+.ring {
+  position: absolute;
+  width: 96px;
+  height: 96px;
+  pointer-events: none;
+  transform: rotate(-90deg);
+}
+
+.ring circle { fill: none; stroke-width: 8; }
+.ring-track { stroke: rgb(255 255 255 / 0.25); }
+/* --confirm-ms viene de CONFIRM_MS (App.jsx); 339.29 = circunferencia del círculo (2π · 54) */
+.ring-fill {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  animation: ring-fill var(--confirm-ms) linear forwards;
+}
+@keyframes ring-fill {
+  from { stroke-dashoffset: 339.29; }
+  to { stroke-dashoffset: 0; }
+}
+
+.panel {
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  background: var(--panel);
+  text-align: center;
+  min-height: 160px;
+}
+
+.panel p { margin: 8px 0; color: var(--muted); }
+.panel .code { font-family: ui-monospace, monospace; color: var(--text); }
+.panel .error { color: #ff6b6b; }
+
+
+button {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.panel .engine { font-size: 12px; opacity: 0.6; }
+.panel .success { color: var(--accent); font-weight: 600; }
+.panel .code { word-break: break-all; }
