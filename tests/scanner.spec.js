@@ -138,6 +138,18 @@ test('a denied camera permission explains how to allow it', async ({ page }) => 
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
 })
 
+test('a page that is not allowed to use the camera says so without suggesting a retry', async ({ page }) => {
+  // e.g. the app runs in an iframe without allow="camera": settings and retrying cannot help
+  await mockDevice(page)
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('Blocked by policy', 'SecurityError'))
+  })
+  await openScanner(page)
+
+  await expect(page.locator('.bsm-error')).toHaveText("This page isn't allowed to use the camera.", { timeout: 10000 })
+  await expect(page.getByRole('button', { name: 'Try again' })).toHaveCount(0)
+})
+
 test('a browser without camera access shows an error instead of crashing', async ({ page }) => {
   // e.g. the page is served over plain HTTP, where navigator.mediaDevices does not exist
   await page.addInitScript(() => Object.defineProperty(navigator, 'mediaDevices', { value: undefined }))

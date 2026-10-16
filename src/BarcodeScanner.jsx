@@ -29,16 +29,21 @@ const DEFAULT_LABELS = {
   errorNoCamera: 'No camera was found. Connect a camera or use a device that has one.',
   errorCameraBusy: 'The camera is in use by another app. Close that app, then try again.',
   errorUnsupported: "This browser can't open the camera here. Use an up-to-date browser on a secure (HTTPS) page.",
+  errorBlocked: "This page isn't allowed to use the camera.",
   errorUnavailable: "The scanner couldn't start. Check your connection, then try again.",
   errorStopped: 'The scanner stopped working. Try again.',
 }
+
+// Errores que reintentar no resuelve: solo queda cerrar el modal
+const NO_RETRY = ['errorUnsupported', 'errorBlocked']
 
 // Traduce el error de getUserMedia (o de la descarga del detector) a la clave de labels que lo explica
 function errorLabel(e) {
   switch (e?.name) {
     case 'NotAllowedError':
-    case 'SecurityError':
       return 'errorPermission'
+    case 'SecurityError': // la página no tiene permiso (p. ej. iframe sin allow="camera"); lo corrige el desarrollador
+      return 'errorBlocked'
     case 'NotFoundError':
     case 'OverconstrainedError':
       return 'errorNoCamera'
@@ -314,14 +319,13 @@ function Scanner({ onScan, onRetry, debug, labels }) {
         {phase === 'error' && (
           <>
             <p className="bsm-error">{labels[state.label]}</p>
-            {/* Sin acceso a la cámara en este navegador, reintentar no cambia nada */}
-            {state.label !== 'errorUnsupported' && <button onClick={onRetry}>{labels.retry}</button>}
+            {!NO_RETRY.includes(state.label) && <button onClick={onRetry}>{labels.retry}</button>}
           </>
         )}
         {phase === 'result' && (
           <>
+            {/* El formato (p. ej. ean_13) es un dato para la app, que lo recibe en onScan; no se muestra */}
             <p className="bsm-code">{state.code}</p>
-            <p>{state.format}</p>
           </>
         )}
       </section>
