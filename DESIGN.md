@@ -32,3 +32,17 @@ Zoom toward the code (300ms ease-out), guide fade on lock (200ms), the ring fill
 ## Demo page
 
 Same palette: yellow capsule "Scan barcode" with a barcode glyph, result in an inset grouped list (`#1c1c1e`, hairline separators) like iOS Settings.
+
+## Themes
+
+`<BarcodeScannerModal theme="…" />` picks one of five built-in looks, rendered as `data-theme` on the dialog. They are CSS only (no markup or behavior change, system fonts) and each sets its own defaults for the internal tokens, so host `--bsm-*` values still win. An unknown value falls back to `standard`. Sources: `docs/design/scanner-directions/`.
+
+| Theme | Panel | Accent / on accent | Error | Signature |
+|---|---|---|---|---|
+| `standard` (default) | `#000` | `#ffd60a` / `#000` | `#ff453a` | iOS Camera: corner brackets, capsule button. |
+| `shelf` | `#ffd60a` with ink top rule | `#141414` / `#ffd60a` | `#b3120a` bold | Shelf-edge strip; the code on a white price tag. |
+| `receipt` | `#f4f1ea` thermal paper, torn top edge | `#2b2b2b` / `#f4f1ea` | `#c23b22` | Monospace throughout, dashed guide. |
+| `datamatics` | `#fff` | `#000` / `#fff` | inverted block, white on black | Pure black and white, 1px guide, square corners. |
+| `coupon` | white card on `#1c2b5a` | `#c8102e` / `#fff` | `#c8102e` | Ticket coupon, purple carbon code. |
+
+Every theme keeps retry and error text at WCAG AA (checked by e2e tests). Sketch content that would need markup (shelf notch, receipt line items, datamatics bar field, coupon fields and stamps) is not built.
