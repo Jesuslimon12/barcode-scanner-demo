@@ -123,7 +123,7 @@ test('shows an error and stops the camera when the detector keeps failing', asyn
   await mockDevice(page, { failFirst: null })
   await openScanner(page)
 
-  await expect(page.locator('.bsm-error')).toHaveText('The scanner stopped working. Try again.', { timeout: 10000 })
+  await expect(page.locator('.bsm-error')).toHaveText('The scanner stopped working.', { timeout: 10000 })
   expect(await cameraIsLive(page)).toBe(false)
 })
 
@@ -148,6 +148,34 @@ test('a page that is not allowed to use the camera says so without suggesting a 
 
   await expect(page.locator('.bsm-error')).toHaveText("This page isn't allowed to use the camera.", { timeout: 10000 })
   await expect(page.getByRole('button', { name: 'Try again' })).toHaveCount(0)
+})
+
+for (const [name, message] of [
+  ['NotFoundError', 'No camera was found'],
+  ['NotReadableError', 'in use by another app'],
+]) {
+  test(`${name} from the camera explains what to do and offers a retry`, async ({ page }) => {
+    await mockDevice(page)
+    await page.addInitScript((name) => {
+      navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('x', name))
+    }, name)
+    await openScanner(page)
+
+    await expect(page.locator('.bsm-error')).toContainText(message, { timeout: 10000 })
+    await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
+  })
+}
+
+test('a failed detector download can be retried', async ({ page }) => {
+  // Without the native API the app downloads ZXing; the first download fails (e.g. offline)
+  await mockDevice(page, { detector: 'none' })
+  await page.route('**/*.wasm', (route) => route.abort())
+  await openScanner(page)
+
+  await expect(page.locator('.bsm-error')).toContainText('Check your connection', { timeout: 10000 })
+  await page.unroute('**/*.wasm')
+  await page.getByRole('button', { name: 'Try again' }).click()
+  await expect(page.getByText('Point the camera at a barcode')).toBeVisible({ timeout: 15000 })
 })
 
 test('a browser without camera access shows an error instead of crashing', async ({ page }) => {

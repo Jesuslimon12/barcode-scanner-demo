@@ -31,7 +31,7 @@ const DEFAULT_LABELS = {
   errorUnsupported: "This browser can't open the camera here. Use an up-to-date browser on a secure (HTTPS) page.",
   errorBlocked: "This page isn't allowed to use the camera.",
   errorUnavailable: "The scanner couldn't start. Check your connection, then try again.",
-  errorStopped: 'The scanner stopped working. Try again.',
+  errorStopped: 'The scanner stopped working.',
 }
 
 // Errores que reintentar no resuelve: solo queda cerrar el modal
@@ -155,8 +155,8 @@ function Scanner({ onScan, onRetry, debug, labels }) {
   useEffect(() => {
     const video = videoRef.current
     let detector = null
-    const canvas = document.createElement("canvas")
-    const ctx = canvas.getContext("2d", { willReadFrequently: true })
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
     let stream = null
     let stopped = false
     let paused = false
@@ -322,12 +322,8 @@ function Scanner({ onScan, onRetry, debug, labels }) {
             {!NO_RETRY.includes(state.label) && <button onClick={onRetry}>{labels.retry}</button>}
           </>
         )}
-        {phase === 'result' && (
-          <>
-            {/* El formato (p. ej. ean_13) es un dato para la app, que lo recibe en onScan; no se muestra */}
-            <p className="bsm-code">{state.code}</p>
-          </>
-        )}
+        {/* El formato (p. ej. ean_13) es un dato para la app, que lo recibe en onScan; no se muestra */}
+        {phase === 'result' && <p className="bsm-code">{state.code}</p>}
       </section>
     </>
   )
@@ -339,7 +335,8 @@ function Scanner({ onScan, onRetry, debug, labels }) {
 // labels reemplaza cualquier texto de DEFAULT_LABELS, p. ej. labels={{ title: 'Escanear código' }}.
 export default function BarcodeScannerModal({ open, onClose, onScan, debug = false, labels }) {
   const dialogRef = useRef(null)
-  const text = { ...DEFAULT_LABELS, ...labels }
+  // Las claves con valor undefined (p. ej. una traducción que falta) conservan el texto por defecto
+  const text = { ...DEFAULT_LABELS, ...Object.fromEntries(Object.entries(labels ?? {}).filter(([, v]) => v != null)) }
   const [attempt, setAttempt] = useState(0) // cambiarlo remonta el escáner: reinicia cámara, lector y estado
 
   useEffect(() => {
@@ -360,10 +357,13 @@ export default function BarcodeScannerModal({ open, onClose, onScan, debug = fal
     >
       {/* Primero en el DOM: está arriba a la izquierda, así el orden del Tab sigue al visual */}
       <button className="bsm-scanner-close" aria-label={text.close} onClick={() => onClose?.()}>
-        ×
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
       </button>
       {open && (
-        <Scanner key={attempt} onScan={onScan} debug={debug} labels={text} onRetry={() => setAttempt((a) => a + 1)} />
+        // Cambiar debug también remonta: el escáner arranca de cero en lugar de reiniciar la cámara a mitad de un estado
+        <Scanner key={`${attempt}-${debug}`} onScan={onScan} debug={debug} labels={text} onRetry={() => setAttempt((a) => a + 1)} />
       )}
     </dialog>
   )

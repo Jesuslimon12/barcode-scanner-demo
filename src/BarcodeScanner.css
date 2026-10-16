@@ -100,7 +100,7 @@
   min-height: 160px;
 }
 
-.bsm-scanner .bsm-panel p { margin: 8px 0; color: var(--_text-muted); }
+.bsm-scanner .bsm-panel p { margin: 8px 0; color: var(--_text-muted); text-wrap: pretty; }
 .bsm-scanner .bsm-panel .bsm-code { font-family: ui-monospace, monospace; color: var(--_text); }
 .bsm-scanner .bsm-panel .bsm-error { color: var(--_danger); }
 
@@ -180,8 +180,16 @@
   border-radius: 50%;
   background: rgb(0 0 0 / 0.5);
   color: #fff;
-  font-size: 28px;
-  line-height: 1;
+}
+.bsm-scanner .bsm-scanner-close svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
 }
 
 /* Foco de teclado con el color del texto: se ve sobre el panel y sobre el fondo oscuro de la X */
