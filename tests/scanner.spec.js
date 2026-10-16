@@ -163,6 +163,18 @@ test('ZXing engine starts downloading the WASM before the camera is ready', asyn
   expect(wasmStart).toBeLessThan(cameraReady)
 })
 
+test('does not download the ZXing WASM until the scanner opens', async ({ page }) => {
+  await mockDevice(page, { detector: 'none' })
+  const wasm = []
+  page.on('request', (r) => r.url().endsWith('.wasm') && wasm.push(r.url()))
+  await page.goto('/')
+  await page.waitForTimeout(1000)
+  expect(wasm).toEqual([])
+
+  await page.getByRole('button', { name: 'Scan barcode' }).click()
+  await expect.poll(() => wasm.length).toBeGreaterThan(0)
+})
+
 test('shows an error instead of a blank screen when rendering crashes', async ({ page }) => {
   // An object is not a valid React child, so rendering the result throws
   await mockDevice(page, { format: { broken: true } })

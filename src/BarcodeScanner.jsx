@@ -21,19 +21,27 @@ const FORMATS = ['codabar', 'code_39', 'code_93', 'code_128', 'ean_8', 'ean_13',
 // ponytail: en Android sin Google Play Services (Huawei, ROMs sin GApps, algunas terminales AOSP) la API
 // puede existir sin soportar formatos y nunca detectar nada. Si hace falta, elegir el motor con
 // (await BarcodeDetector.getSupportedFormats()).length > 0.
-const engine = globalThis.BarcodeDetector ? 'native' : 'zxing-wasm'
-// Modo de prueba: agregar ?debug a la URL marca el área analizada (rojo) y el código detectado (verde)
-const DEBUG = new URLSearchParams(location.search).has('debug')
-// ZXing solo se descarga si hace falta, y arranca al cargar la página: así baja en paralelo con el permiso de cámara.
+// Nada en este módulo toca window al importarse: así se puede importar en apps con SSR (Next.js, Remix).
+let detectorReady = null
+// ZXing solo se descarga si hace falta, la primera vez que se abre el escáner y antes de pedir la cámara:
+// así baja en paralelo con el permiso sin cargar 1 MB en cada página de la app que lo usa.
 // El .wasm se sirve desde nuestro propio servidor en lugar del CDN jsDelivr por defecto.
-const detectorReady = globalThis.BarcodeDetector
-  ? Promise.resolve(globalThis.BarcodeDetector)
-  : import('barcode-detector/ponyfill').then(({ BarcodeDetector, prepareZXingModule }) =>
-      prepareZXingModule({
-        overrides: { locateFile: (path, prefix) => (path.endsWith('.wasm') ? wasmUrl : prefix + path) },
-        fireImmediately: true,
-      }).then(() => BarcodeDetector),
-    )
+function loadDetector() {
+  detectorReady ??= globalThis.BarcodeDetector
+    ? Promise.resolve(globalThis.BarcodeDetector)
+    : import('barcode-detector/ponyfill')
+        .then(({ BarcodeDetector, prepareZXingModule }) =>
+          prepareZXingModule({
+            overrides: { locateFile: (path, prefix) => (path.endsWith('.wasm') ? wasmUrl : prefix + path) },
+            fireImmediately: true,
+          }).then(() => BarcodeDetector),
+        )
+        .catch((e) => {
+          detectorReady = null // si falló la descarga (p. ej. sin conexión), "Try again" vuelve a intentarla
+          throw e
+        })
+  return detectorReady
+}
 
 // Circunferencia del anillo (r = 54), usada como stroke-dasharray
 const RING = 2 * Math.PI * 54
@@ -90,7 +98,7 @@ function zoomTransform(box, video, el) {
   return { transform: `translate(${(tx / W) * 100}%, ${(ty / H) * 100}%) scale(${z})` }
 }
 
-function Scanner({ onScan, onRetry }) {
+function Scanner({ onScan, onRetry, debug }) {
   const videoRef = useRef(null)
   const viewRef = useRef(null)
   const debugRef = useRef(null)
@@ -122,7 +130,7 @@ function Scanner({ onScan, onRetry }) {
       lock = null
       setLocked(null)
       video.style.transform = ''
-      if (DEBUG) debugRef.current.style.transform = ''
+      if (debug) debugRef.current.style.transform = ''
     }
 
     // Se ejecuta en cada frame mientras hay un código detectado: confirma al cumplirse CONFIRM_MS.
@@ -154,7 +162,7 @@ function Scanner({ onScan, onRetry }) {
       if (moved) reset()
       // Directo al DOM: cambia en cada frame y no necesita re-render
       video.style.transform = zoomTransform(box, video, viewRef.current).transform
-      if (DEBUG) {
+      if (debug) {
         debugRef.current.style.transform = video.style.transform // la capa sigue al zoom del video
         debugRef.current.querySelector('.debug-box').style.cssText = toScreen(box, video, viewRef.current)
       }
@@ -177,7 +185,7 @@ function Scanner({ onScan, onRetry }) {
         try {
           // Analiza solo el área del recuadro: ignora códigos de afuera y es más liviano en iOS
           const crop = guideCrop(video, viewRef.current)
-          if (DEBUG) {
+          if (debug) {
             debugRef.current.querySelector('.debug-crop').style.cssText = toScreen(crop, video, viewRef.current)
             viewRef.current.querySelector('.debug-info').textContent =
               `video ${video.videoWidth}x${video.videoHeight} · crop ${Math.round(crop.width)}x${Math.round(crop.height)}`
@@ -205,6 +213,8 @@ function Scanner({ onScan, onRetry }) {
       requestAnimationFrame(loop)
     }
 
+    const detectorLoad = loadDetector() // arranca ya: baja mientras el usuario responde el permiso de cámara
+    detectorLoad.catch(() => {}) // el error se muestra abajo, cuando se espera el detector
     navigator.mediaDevices
       .getUserMedia({
         audio: false,
@@ -215,7 +225,7 @@ function Scanner({ onScan, onRetry }) {
         stream = s
         video.srcObject = s
         await video.play()
-        const Detector = await detectorReady // en iOS ya viene descargándose desde que cargó la página
+        const Detector = await detectorLoad
         if (stopped) return
         detector = new Detector({ formats: FORMATS })
         setState({ phase: 'scanning' })
@@ -232,14 +242,14 @@ function Scanner({ onScan, onRetry }) {
       cancelAnimationFrame(raf)
       stream?.getTracks().forEach((t) => t.stop())
     }
-  }, [])
+  }, [debug])
 
   return (
     <>
       <div className="viewport" ref={viewRef}>
         {/* ponytail: zoom solo visual; el zoom de la cámara agregaría resolución pero mueve la posición del código */}
         <video ref={videoRef} playsInline muted />
-        {DEBUG && (
+        {debug && (
           <>
             <div className="debug" ref={debugRef} aria-hidden="true">
               <div className="debug-crop" />
@@ -275,7 +285,7 @@ function Scanner({ onScan, onRetry }) {
             <p>{state.format}</p>
           </>
         )}
-        <p className="engine">Engine: {engine}</p>
+        <p className="engine">Engine: {globalThis.BarcodeDetector ? 'native' : 'zxing-wasm'}</p>
       </section>
     </>
   )
@@ -283,7 +293,8 @@ function Scanner({ onScan, onRetry }) {
 
 // Modal a pantalla completa que escanea un código de barras y lo devuelve con onScan(code, format).
 // open lo controla el padre; onClose se llama al tocar la X o con Escape. La cámara solo se enciende mientras está abierto.
-export default function BarcodeScannerModal({ open, onClose, onScan }) {
+// debug marca el área analizada (rojo) y el código detectado (verde); la app decide cuándo activarlo.
+export default function BarcodeScannerModal({ open, onClose, onScan, debug = false }) {
   const dialogRef = useRef(null)
   const [attempt, setAttempt] = useState(0) // cambiarlo remonta el escáner: reinicia cámara, lector y estado
 
@@ -302,7 +313,7 @@ export default function BarcodeScannerModal({ open, onClose, onScan }) {
         onClose?.()
       }}
     >
-      {open && <Scanner key={attempt} onScan={onScan} onRetry={() => setAttempt((a) => a + 1)} />}
+      {open && <Scanner key={attempt} onScan={onScan} debug={debug} onRetry={() => setAttempt((a) => a + 1)} />}
       <button className="scanner-close" aria-label="Close" onClick={() => onClose?.()}>
         ×
       </button>
