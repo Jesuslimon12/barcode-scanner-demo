@@ -1,0 +1,199 @@
+/*
+  Tokens públicos: la app puede definirlos en :root o en cualquier ancestro del modal.
+    --bsm-accent       acción principal y anillo de confirmación
+    --bsm-on-accent    texto sobre --bsm-accent (mantener 4.5:1)
+    --bsm-background   fondo del modal
+    --bsm-surface      fondo del panel de mensajes
+    --bsm-text         texto principal y anillo de foco
+    --bsm-text-muted   texto secundario
+    --bsm-danger       mensajes de error
+    --bsm-radius       radio del botón
+    --bsm-font         tipografía
+  Se leen acá con valores por defecto; declararlos directo en .bsm-scanner taparía los de la app.
+  Los colores sobre la cámara (guía, oscurecido, fondo de la X) y los de ?debug son internos:
+  existen para que se lean sobre cualquier imagen, no para la marca.
+*/
+.bsm-scanner {
+  --_accent: var(--bsm-accent, #237a35); /* 5.4:1 con blanco; el verde anterior (#2f9e44) daba 3.4:1 */
+  --_on-accent: var(--bsm-on-accent, #fff);
+  --_background: var(--bsm-background, #111);
+  --_surface: var(--bsm-surface, #1c1c1e);
+  --_text: var(--bsm-text, #f2f2f2);
+  --_text-muted: var(--bsm-text-muted, #a1a1a6);
+  --_danger: var(--bsm-danger, #ff6b6b);
+  color-scheme: dark;
+  font-family: var(--bsm-font, system-ui, -apple-system, sans-serif);
+  width: 100%;
+  height: 100dvh; /* alto fijo: .bsm-viewport necesita un alto definido para cqh */
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--_background);
+  color: var(--_text);
+  flex-direction: column;
+}
+.bsm-scanner[open] { display: flex; }
+.bsm-scanner::backdrop { background: #000; }
+.bsm-scanner, .bsm-scanner * { box-sizing: border-box; }
+
+.bsm-scanner .bsm-viewport {
+  position: relative;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #000;
+  container-type: size; /* permite medir el recuadro con cqw/cqh */
+}
+
+.bsm-scanner .bsm-viewport video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: 0 0;
+  transition: transform 300ms ease-out;
+}
+
+/* Mantener sincronizado con GUIDE_WIDTH / GUIDE_RATIO en BarcodeScanner.jsx */
+.bsm-scanner .bsm-guide {
+  position: absolute;
+  /* 80% del ancho, salvo que no entre en el alto (horizontal): ahí 80% del alto */
+  width: min(80cqw, 160cqh);
+  aspect-ratio: 2 / 1;
+  border: 3px solid rgb(255 255 255 / 0.8);
+  border-radius: 16px;
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.45);
+  pointer-events: none;
+  transition: opacity 200ms;
+}
+.bsm-scanner .bsm-guide.bsm-locked { opacity: 0; }
+
+.bsm-scanner .bsm-ring {
+  position: absolute;
+  width: 96px;
+  height: 96px;
+  pointer-events: none;
+  transform: rotate(-90deg);
+}
+
+.bsm-scanner .bsm-ring circle { fill: none; stroke-width: 8; }
+.bsm-scanner .bsm-ring-track { stroke: rgb(255 255 255 / 0.25); }
+/* --confirm-ms viene de CONFIRM_MS (BarcodeScanner.jsx); 339.29 = circunferencia del círculo (2π · 54) */
+.bsm-scanner .bsm-ring-fill {
+  stroke: var(--_accent);
+  stroke-linecap: round;
+  animation: bsm-ring-fill var(--confirm-ms) linear forwards;
+}
+@keyframes bsm-ring-fill {
+  from { stroke-dashoffset: 339.29; }
+  to { stroke-dashoffset: 0; }
+}
+
+.bsm-scanner .bsm-panel {
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  background: var(--_surface);
+  text-align: center;
+  min-height: 160px;
+}
+
+.bsm-scanner .bsm-panel p { margin: 8px 0; color: var(--_text-muted); text-wrap: pretty; }
+.bsm-scanner .bsm-panel .bsm-code { font-family: ui-monospace, monospace; color: var(--_text); }
+.bsm-scanner .bsm-panel .bsm-error { color: var(--_danger); }
+
+.bsm-scanner .bsm-panel button {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: var(--bsm-radius, 12px);
+  background: var(--_accent);
+  color: var(--_on-accent);
+  font-size: 1em; /* sigue el tamaño de texto de la app y del usuario, igual que el resto del panel */
+  font-weight: 600;
+}
+
+.bsm-scanner .bsm-panel .bsm-code { word-break: break-all; }
+
+/* Horizontal: el panel va al costado para que la cámara use todo el alto */
+@media (orientation: landscape) {
+  .bsm-scanner { flex-direction: row; }
+  .bsm-scanner .bsm-panel {
+    width: 280px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 16px calc(16px + env(safe-area-inset-right)) 16px 16px;
+  }
+}
+
+/* Modo ?debug: misma caja y mismo zoom que el video */
+.bsm-scanner .bsm-debug {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transform-origin: 0 0;
+  transition: transform 300ms ease-out;
+  pointer-events: none;
+}
+.bsm-scanner .bsm-debug-crop, .bsm-scanner .bsm-debug-box { position: absolute; }
+.bsm-scanner .bsm-debug-crop { outline: 2px dashed #ff3b30; }
+.bsm-scanner .bsm-debug-box { outline: 2px solid #34c759; }
+/* Arriba a la derecha: a la izquierda tapaba el botón de cerrar */
+.bsm-scanner .bsm-debug-info {
+  position: absolute;
+  top: calc(8px + env(safe-area-inset-top));
+  right: 8px;
+  z-index: 1;
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.6);
+  font: 12px ui-monospace, monospace;
+}
+
+/* Movimiento reducido: el video no se acerca ni se desplaza hacia el código.
+   El zoom es solo visual (no cambia lo que se analiza), así que no se pierde nada; el anillo sigue
+   llenándose porque es la única señal de progreso de la confirmación. */
+@media (prefers-reduced-motion: reduce) {
+  .bsm-scanner .bsm-viewport video,
+  .bsm-scanner .bsm-debug {
+    transform: none !important; /* el transform se escribe inline desde JS en cada detección */
+    transition: none;
+  }
+}
+
+/* Define todas sus propiedades para que no le afecten los estilos de botón de la app que lo usa */
+.bsm-scanner .bsm-scanner-close {
+  position: absolute;
+  top: calc(8px + env(safe-area-inset-top));
+  left: calc(8px + env(safe-area-inset-left));
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.5);
+  color: #fff;
+}
+.bsm-scanner .bsm-scanner-close svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+/* Foco de teclado con el color del texto: se ve sobre el panel y sobre el fondo oscuro de la X */
+.bsm-scanner :focus-visible {
+  outline: 2px solid var(--_text);
+  outline-offset: 2px;
+}

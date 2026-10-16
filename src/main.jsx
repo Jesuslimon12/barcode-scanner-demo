@@ -12,11 +12,9 @@ class ErrorBoundary extends Component {
   render() {
     if (!this.state.error) return this.props.children
     return (
-      <main className="app">
-        <section className="panel">
-          <p className="error">Something went wrong: {this.state.error.message}</p>
-          <button onClick={() => location.reload()}>Try again</button>
-        </section>
+      <main className="demo">
+        <p className="error">Something went wrong: {this.state.error.message}</p>
+        <button onClick={() => location.reload()}>Try again</button>
       </main>
     )
   }
