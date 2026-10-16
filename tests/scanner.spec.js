@@ -32,6 +32,9 @@ async function mockDevice(page, { detector = 'fake', failFirst = 0, cameraDelayM
       }
       // The count lives in sessionStorage so it survives page reloads within a test
       window.BarcodeDetector = class {
+        constructor(options) {
+          window.__formats = options?.formats
+        }
         async detect() {
           await new Promise((r) => setTimeout(r, 10))
           const calls = Number(sessionStorage.getItem('detectCalls') ?? 0)
@@ -160,4 +163,14 @@ test('in portrait the scan area takes 80% of the camera width', async ({ page })
     () => document.querySelector('.guide').offsetWidth / document.querySelector('.viewport').clientWidth,
   )
   expect(ratio).toBeCloseTo(0.8, 1)
+})
+
+test('only asks the detector for linear barcodes, not QR or other 2D codes', async ({ page }) => {
+  await mockDevice(page)
+  await page.goto('/')
+  await expect(page.getByText('Hold steady…')).toBeVisible()
+
+  const formats = await page.evaluate(() => window.__formats)
+  expect(formats).toEqual(expect.arrayContaining(['ean_13', 'code_128']))
+  for (const f of ['qr_code', 'data_matrix', 'aztec', 'pdf417']) expect(formats).not.toContain(f)
 })

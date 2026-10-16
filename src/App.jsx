@@ -12,6 +12,8 @@ const TARGET_FILL = 0.7 // hacer zoom hasta que el código ocupe esta proporció
 // Área de escaneo, centrada en la pantalla. Mantener sincronizado con .guide en index.css.
 const GUIDE_WIDTH = 0.8 // proporción del ancho de la pantalla
 const GUIDE_RATIO = 2 // ancho / alto
+// Solo códigos de barras lineales (1D): se ignoran QR, Data Matrix, Aztec y PDF417
+const FORMATS = ['codabar', 'code_39', 'code_93', 'code_128', 'ean_8', 'ean_13', 'itf', 'upc_a', 'upc_e']
 
 // Detector nativo donde existe (Chrome en Android), ZXing en WASM en el resto (Safari en iOS).
 // ponytail: en Android sin Google Play Services (Huawei, ROMs sin GApps, algunas terminales AOSP) la API
@@ -185,7 +187,7 @@ export default function App() {
         await video.play()
         const Detector = await detectorReady // en iOS ya viene descargándose desde que cargó la página
         if (stopped) return
-        detector = new Detector() // sin formats: acepta todos los formatos soportados
+        detector = new Detector({ formats: FORMATS })
         setState({ phase: 'scanning' })
         loop()
       })
