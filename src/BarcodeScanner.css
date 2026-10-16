@@ -10,19 +10,20 @@
     --bsm-radius       radio del botón
     --bsm-font         tipografía
   Se leen acá con valores por defecto; declararlos directo en .bsm-scanner taparía los de la app.
-  Los colores sobre la cámara (guía, oscurecido, fondo de la X) y los de ?debug son internos:
+  Los colores sobre la cámara (esquinas de la guía, fondo de la X) y los de ?debug son internos:
   existen para que se lean sobre cualquier imagen, no para la marca.
 */
 .bsm-scanner {
-  --_accent: var(--bsm-accent, #237a35); /* 5.4:1 con blanco; el verde anterior (#2f9e44) daba 3.4:1 */
-  --_on-accent: var(--bsm-on-accent, #fff);
-  --_background: var(--bsm-background, #111);
-  --_surface: var(--bsm-surface, #1c1c1e);
-  --_text: var(--bsm-text, #f2f2f2);
-  --_text-muted: var(--bsm-text-muted, #a1a1a6);
-  --_danger: var(--bsm-danger, #ff6b6b);
+  /* Por defecto sigue al escáner de la cámara de iOS: negro, amarillo del sistema y rojo/gris de modo oscuro */
+  --_accent: var(--bsm-accent, #ffd60a); /* 14.9:1 con negro */
+  --_on-accent: var(--bsm-on-accent, #000);
+  --_background: var(--bsm-background, #000);
+  --_surface: var(--bsm-surface, #000);
+  --_text: var(--bsm-text, #fff);
+  --_text-muted: var(--bsm-text-muted, #98989d);
+  --_danger: var(--bsm-danger, #ff453a);
   color-scheme: dark;
-  font-family: var(--bsm-font, system-ui, -apple-system, sans-serif);
+  font-family: var(--bsm-font, -apple-system, system-ui, sans-serif);
   width: 100%;
   height: 100dvh; /* alto fijo: .bsm-viewport necesita un alto definido para cqh */
   max-width: none;
@@ -64,11 +65,14 @@
   /* 80% del ancho, salvo que no entre en el alto (horizontal): ahí 80% del alto */
   width: min(80cqw, 160cqh);
   aspect-ratio: 2 / 1;
-  border: 3px solid rgb(255 255 255 / 0.8);
-  border-radius: 16px;
-  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.45);
+  /* Solo las cuatro esquinas del borde: la máscara deja ver un cuadrado de --_corner en cada una */
+  --_corner: 36px;
+  border: 4px solid #fff;
+  border-radius: 18px;
+  mask: conic-gradient(at var(--_corner) var(--_corner), #0000 75%, #000 0) 0 0 / calc(100% - var(--_corner)) calc(100% - var(--_corner));
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5)); /* se lee sobre una escena clara */
   pointer-events: none;
-  transition: opacity 200ms;
+  transition: opacity 200ms ease-out;
 }
 .bsm-scanner .bsm-guide.bsm-locked { opacity: 0; }
 
@@ -78,10 +82,11 @@
   height: 96px;
   pointer-events: none;
   transform: rotate(-90deg);
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5)); /* el amarillo se lee sobre una escena clara */
 }
 
 .bsm-scanner .bsm-ring circle { fill: none; stroke-width: 8; }
-.bsm-scanner .bsm-ring-track { stroke: rgb(255 255 255 / 0.25); }
+.bsm-scanner .bsm-ring-track { stroke: rgb(255 255 255 / 0.35); }
 /* --confirm-ms viene de CONFIRM_MS (BarcodeScanner.jsx); 339.29 = circunferencia del círculo (2π · 54) */
 .bsm-scanner .bsm-ring-fill {
   stroke: var(--_accent);
@@ -94,26 +99,38 @@
 }
 
 .bsm-scanner .bsm-panel {
-  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
   background: var(--_surface);
   text-align: center;
   min-height: 160px;
 }
 
-.bsm-scanner .bsm-panel p { margin: 8px 0; color: var(--_text-muted); text-wrap: pretty; }
-.bsm-scanner .bsm-panel .bsm-code { font-family: ui-monospace, monospace; color: var(--_text); }
+.bsm-scanner .bsm-panel p { margin: 0 0 16px; font-size: 1.0625em; line-height: 1.35; color: var(--_text-muted); text-wrap: pretty; }
+.bsm-scanner .bsm-panel .bsm-code {
+  font-family: ui-monospace, monospace;
+  font-size: 1.25em;
+  color: var(--_text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.bsm-scanner ::selection { background: var(--_accent); color: var(--_on-accent); }
 .bsm-scanner .bsm-panel .bsm-error { color: var(--_danger); }
 
 .bsm-scanner .bsm-panel button {
+  display: block; /* fija lo que un estilo de botón de la app podría cambiar */
   width: 100%;
-  min-height: 48px;
+  min-height: 50px;
+  padding: 0 16px;
+  text-align: center;
   border: 0;
-  border-radius: var(--bsm-radius, 12px);
+  border-radius: var(--bsm-radius, 999px);
   background: var(--_accent);
   color: var(--_on-accent);
-  font-size: 1em; /* sigue el tamaño de texto de la app y del usuario, igual que el resto del panel */
+  font-size: 1.0625em; /* sigue el tamaño de texto de la app y del usuario, igual que el resto del panel */
   font-weight: 600;
+  transition: opacity 120ms ease-out;
 }
+.bsm-scanner .bsm-panel button:active { opacity: 0.7; }
 
 .bsm-scanner .bsm-panel .bsm-code { word-break: break-all; }
 
@@ -178,7 +195,9 @@
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: rgb(0 0 0 / 0.5);
+  background: rgb(0 0 0 / 0.35);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%); /* se lee sobre cualquier imagen sin tapar el video */
   color: #fff;
 }
 .bsm-scanner .bsm-scanner-close svg {

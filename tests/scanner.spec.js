@@ -251,6 +251,17 @@ test('host styles with common class names do not leak into the scanner', async (
   await expect(page.locator('.bsm-error')).toBeVisible({ timeout: 10000 })
 })
 
+test('host button styles do not misalign the retry button', async ({ page }) => {
+  await mockDevice(page, { failFirst: null })
+  await page.goto('/')
+  await page.addStyleTag({ content: 'main button { display: inline-flex; text-align: left; padding: 0 40px }' })
+  await page.getByRole('button', { name: 'Scan barcode' }).click()
+
+  const retry = page.getByRole('button', { name: 'Try again' })
+  await expect(retry).toBeVisible({ timeout: 10000 })
+  expect(await retry.evaluate((el) => [getComputedStyle(el).display, getComputedStyle(el).textAlign])).toEqual(['block', 'center'])
+})
+
 // WCAG contrast ratio between two computed rgb() colors
 const contrast = (a, b) => {
   const lum = (c) =>
