@@ -17,6 +17,41 @@ const GUIDE_RATIO = 2 // ancho / alto
 // Solo códigos de barras lineales (1D): se ignoran QR, Data Matrix, Aztec y PDF417
 const FORMATS = ['codabar', 'code_39', 'code_93', 'code_128', 'ean_8', 'ean_13', 'itf', 'upc_a', 'upc_e']
 
+// Todos los textos visibles; la app puede reemplazar cualquiera con la prop labels (p. ej. para traducirlos)
+const DEFAULT_LABELS = {
+  title: 'Scan barcode',
+  close: 'Close',
+  starting: 'Starting camera…',
+  aim: 'Point the camera at a barcode',
+  holdSteady: 'Hold steady…',
+  retry: 'Try again',
+  errorPermission: 'Camera access is blocked. Allow the camera for this site in your browser settings, then try again.',
+  errorNoCamera: 'No camera was found. Connect a camera or use a device that has one.',
+  errorCameraBusy: 'The camera is in use by another app. Close that app, then try again.',
+  errorUnsupported: "This browser can't open the camera here. Use an up-to-date browser on a secure (HTTPS) page.",
+  errorUnavailable: "The scanner couldn't start. Check your connection, then try again.",
+  errorStopped: 'The scanner stopped working. Try again.',
+}
+
+// Traduce el error de getUserMedia (o de la descarga del detector) a la clave de labels que lo explica
+function errorLabel(e) {
+  switch (e?.name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'errorPermission'
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return 'errorNoCamera'
+    case 'NotReadableError':
+    case 'AbortError':
+      return 'errorCameraBusy'
+    case 'NotSupportedError':
+      return 'errorUnsupported'
+    default:
+      return 'errorUnavailable'
+  }
+}
+
 // Detector nativo donde existe (Chrome en Android), ZXing en WASM en el resto (Safari en iOS).
 // ponytail: en Android sin Google Play Services (Huawei, ROMs sin GApps, algunas terminales AOSP) la API
 // puede existir sin soportar formatos y nunca detectar nada. Si hace falta, elegir el motor con
@@ -98,12 +133,12 @@ function zoomTransform(box, video, el) {
   return { transform: `translate(${(tx / W) * 100}%, ${(ty / H) * 100}%) scale(${z})` }
 }
 
-function Scanner({ onScan, onRetry, debug }) {
+function Scanner({ onScan, onRetry, debug, labels }) {
   const videoRef = useRef(null)
   const viewRef = useRef(null)
   const debugRef = useRef(null)
   const [locked, setLocked] = useState(null) // código detectado actualmente, o null
-  // phase: starting (iniciando) | scanning (escaneando) | result (resultado, con code y format) | error (con message)
+  // phase: starting (iniciando) | scanning (escaneando) | result (resultado, con code y format) | error (con label, la clave del texto)
   const [state, setState] = useState({ phase: 'starting' })
   const { phase } = state
   // El efecto corre una sola vez: se guarda el último onScan para no llamar a uno viejo
@@ -205,7 +240,8 @@ function Scanner({ onScan, onRetry, debug }) {
           if (++failures >= MAX_FAILURES) {
             stopped = true
             stream?.getTracks().forEach((t) => t.stop())
-            setState({ phase: 'error', message: `Scanner stopped working: ${e?.message ?? e}` })
+            console.error('BarcodeScanner: detector stopped working', e) // el detalle técnico queda para el desarrollador
+            setState({ phase: 'error', label: 'errorStopped' })
             return
           }
         }
@@ -215,11 +251,14 @@ function Scanner({ onScan, onRetry, debug }) {
 
     const detectorLoad = loadDetector() // arranca ya: baja mientras el usuario responde el permiso de cámara
     detectorLoad.catch(() => {}) // el error se muestra abajo, cuando se espera el detector
-    navigator.mediaDevices
-      .getUserMedia({
-        audio: false,
-        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
-      })
+    // Sin HTTPS (o en navegadores viejos) navigator.mediaDevices no existe: se muestra el error en lugar de romper
+    const camera = navigator.mediaDevices?.getUserMedia
+      ? navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+        })
+      : Promise.reject(new DOMException('navigator.mediaDevices is not available', 'NotSupportedError'))
+    camera
       .then(async (s) => {
         if (stopped) return s.getTracks().forEach((t) => t.stop())
         stream = s
@@ -234,7 +273,8 @@ function Scanner({ onScan, onRetry, debug }) {
       .catch((e) => {
         if (stopped) return
         stream?.getTracks().forEach((t) => t.stop())
-        setState({ phase: 'error', message: `Scanner unavailable: ${e?.message ?? e}` })
+        console.error('BarcodeScanner: could not start', e)
+        setState({ phase: 'error', label: errorLabel(e) })
       })
 
     return () => {
@@ -269,14 +309,13 @@ function Scanner({ onScan, onRetry, debug }) {
       </div>
 
       <section className="bsm-panel" aria-live="polite">
-        {phase === 'starting' && <p>Starting camera…</p>}
-        {phase === 'scanning' && (
-          <p>{locked !== null ? 'Hold steady…' : 'Point the camera at a barcode'}</p>
-        )}
+        {phase === 'starting' && <p>{labels.starting}</p>}
+        {phase === 'scanning' && <p>{locked !== null ? labels.holdSteady : labels.aim}</p>}
         {phase === 'error' && (
           <>
-            <p className="bsm-error">{state.message}</p>
-            <button onClick={onRetry}>Try again</button>
+            <p className="bsm-error">{labels[state.label]}</p>
+            {/* Sin acceso a la cámara en este navegador, reintentar no cambia nada */}
+            {state.label !== 'errorUnsupported' && <button onClick={onRetry}>{labels.retry}</button>}
           </>
         )}
         {phase === 'result' && (
@@ -294,8 +333,10 @@ function Scanner({ onScan, onRetry, debug }) {
 // Modal a pantalla completa que escanea un código de barras y lo devuelve con onScan(code, format).
 // open lo controla el padre; onClose se llama al tocar la X o con Escape. La cámara solo se enciende mientras está abierto.
 // debug marca el área analizada (rojo) y el código detectado (verde); la app decide cuándo activarlo.
-export default function BarcodeScannerModal({ open, onClose, onScan, debug = false }) {
+// labels reemplaza cualquier texto de DEFAULT_LABELS, p. ej. labels={{ title: 'Escanear código' }}.
+export default function BarcodeScannerModal({ open, onClose, onScan, debug = false, labels }) {
   const dialogRef = useRef(null)
+  const text = { ...DEFAULT_LABELS, ...labels }
   const [attempt, setAttempt] = useState(0) // cambiarlo remonta el escáner: reinicia cámara, lector y estado
 
   useEffect(() => {
@@ -308,13 +349,16 @@ export default function BarcodeScannerModal({ open, onClose, onScan, debug = fal
     <dialog
       ref={dialogRef}
       className="bsm-scanner"
+      aria-label={text.title}
       onCancel={(e) => {
         e.preventDefault() // Escape: el padre decide si se cierra, a través de open
         onClose?.()
       }}
     >
-      {open && <Scanner key={attempt} onScan={onScan} debug={debug} onRetry={() => setAttempt((a) => a + 1)} />}
-      <button className="bsm-scanner-close" aria-label="Close" onClick={() => onClose?.()}>
+      {open && (
+        <Scanner key={attempt} onScan={onScan} debug={debug} labels={text} onRetry={() => setAttempt((a) => a + 1)} />
+      )}
+      <button className="bsm-scanner-close" aria-label={text.close} onClick={() => onClose?.()}>
         ×
       </button>
     </dialog>

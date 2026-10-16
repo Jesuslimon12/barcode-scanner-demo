@@ -123,8 +123,36 @@ test('shows an error and stops the camera when the detector keeps failing', asyn
   await mockDevice(page, { failFirst: null })
   await openScanner(page)
 
-  await expect(page.locator('.bsm-error')).toHaveText('Scanner stopped working: decoder crashed', { timeout: 10000 })
+  await expect(page.locator('.bsm-error')).toHaveText('The scanner stopped working. Try again.', { timeout: 10000 })
   expect(await cameraIsLive(page)).toBe(false)
+})
+
+test('a denied camera permission explains how to allow it', async ({ page }) => {
+  await mockDevice(page)
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('Permission denied', 'NotAllowedError'))
+  })
+  await openScanner(page)
+
+  await expect(page.locator('.bsm-error')).toContainText('Allow the camera for this site')
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
+})
+
+test('a browser without camera access shows an error instead of crashing', async ({ page }) => {
+  // e.g. the page is served over plain HTTP, where navigator.mediaDevices does not exist
+  await page.addInitScript(() => Object.defineProperty(navigator, 'mediaDevices', { value: undefined }))
+  await openScanner(page)
+
+  await expect(page.locator('.bsm-error')).toContainText('secure (HTTPS) page')
+  // Retrying cannot help, so the only way out is closing the modal
+  await expect(page.getByRole('button', { name: 'Try again' })).toHaveCount(0)
+})
+
+test('the scanner dialog is announced by name', async ({ page }) => {
+  await mockDevice(page)
+  await openScanner(page)
+
+  await expect(page.getByRole('dialog', { name: 'Scan barcode' })).toBeVisible()
 })
 
 test('try again recovers after the detector stopped working', async ({ page }) => {

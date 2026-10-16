@@ -28,7 +28,10 @@ Out (other audit commands): accent contrast and public tokens (`colorize`), engi
   - Commit `aa14172`. RDD assess (`--untracked-scope=exclude`, PRODUCT.md untracked): medium, `under_budget` (118 lines), pending in slice.
 - [x] T3 Prefix every class and the keyframe with `bsm-`. Route: inline (mechanical rename across CSS/JSX/tests).
   - Evidence: RED `host styles with common class names do not leak into the scanner` failed on the pre-T3 build. GREEN 20/20 after rebuild. Lint clean.
-- [ ] T4 Accessible dialog name, `labels` prop, error kinds mapped from camera/detector failures, guard for missing `mediaDevices`. Route: inline (one non-trivial file).
+  - Commit `df6f895`. RDD assess: medium, `under_budget` (253 lines).
+- [x] T4 Accessible dialog name, `labels` prop, error kinds mapped from camera/detector failures, guard for missing `mediaDevices`. Route: inline (one non-trivial file).
+  - Evidence: RED on 4 tests (detector-stopped copy, denied permission, missing `mediaDevices` crashed into the demo ErrorBoundary, unnamed dialog). GREEN 23/23. SSR render with `labels={{ title: 'Escanear código', close: 'Cerrar' }}` outputs both. Browser check (Chromium, emulated camera) at 393×852, 852×393, 768×1024, 1440×900: no horizontal scroll, no panel overflow, no page errors. That check found "Try again" useless on the unsupported error; it is now hidden there (covered by the test).
+  - Raw errors go to `console.error` for developers; users only see the mapped copy.
 
 ## Acceptance criteria
 - Importing the module touches no browser global.
@@ -46,4 +49,4 @@ Baseline: 18/18 e2e passing before changes.
 Note: a `vite preview` on port 4174 started outside this session (14:53) is reused by Playwright (`reuseExistingServer`), so the suite skips its own build. Run `npm run build` before `npx playwright test`.
 
 ## Next step
-T4.
+All tasks done. Remaining audit items: `/impeccable colorize` (accent contrast, public tokens), `optimize` is covered by T1, then `clarify`, `animate`, `distill`, `typeset`, `polish`.
