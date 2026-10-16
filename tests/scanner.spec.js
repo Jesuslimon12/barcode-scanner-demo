@@ -23,7 +23,7 @@ async function mockDevice(page, { detector = 'fake', failFirst = 0, cameraDelayM
         new Promise((resolve) =>
           setTimeout(() => {
             window.__cameraReadyAt = performance.now()
-            resolve(canvas.captureStream(30))
+            resolve((window.__stream = canvas.captureStream(30)))
           }, cameraDelayMs),
         )
 
@@ -49,12 +49,20 @@ async function mockDevice(page, { detector = 'fake', failFirst = 0, cameraDelayM
   )
 }
 
+// Opens the demo page and the scanner modal
+async function openScanner(page, url = '/') {
+  await page.goto(url)
+  await page.getByRole('button', { name: 'Scan barcode' }).click()
+}
+
+const streamEnded = (page) => page.evaluate(() => window.__stream.getTracks().every((t) => t.readyState === 'ended'))
+
 const cameraIsLive = (page) =>
   page.evaluate(() => document.querySelector('video').srcObject?.getTracks().some((t) => t.readyState === 'live'))
 
 test('confirms a code only after holding it for the full confirmation time', async ({ page }) => {
   await mockDevice(page)
-  await page.goto('/')
+  await openScanner(page)
 
   await expect(page.getByText('Hold steady…')).toBeVisible()
   const ring = page.locator('.ring-fill')
@@ -69,18 +77,43 @@ test('confirms a code only after holding it for the full confirmation time', asy
   await expect(page.getByText('ean_13')).toBeVisible()
 })
 
-test('scan again resumes scanning', async ({ page }) => {
+test('can scan again after a code was returned', async ({ page }) => {
   await mockDevice(page)
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Scan again' }).click({ timeout: 10000 })
+  await openScanner(page)
+  await expect(page.locator('.code')).toHaveText(CODE, { timeout: 10000 })
+  await page.getByRole('button', { name: 'Scan barcode' }).click()
 
-  await expect(page.locator('.code')).toHaveCount(0)
   await expect(page.getByText('Hold steady…')).toBeVisible()
 })
 
+test('returns the code to the host, closes the modal and stops the camera', async ({ page }) => {
+  await mockDevice(page)
+  await openScanner(page)
+
+  await expect(page.locator('.code')).toHaveText(CODE, { timeout: 10000 })
+  await expect(page.locator('dialog.scanner')).toBeHidden()
+  expect(await streamEnded(page)).toBe(true)
+})
+
+for (const [how, close] of [
+  ['the close button', (page) => page.getByRole('button', { name: 'Close' }).click()],
+  ['Escape', (page) => page.keyboard.press('Escape')],
+]) {
+  test(`${how} closes the modal and stops the camera without a code`, async ({ page }) => {
+    await mockDevice(page)
+    await openScanner(page)
+    await expect(page.getByText('Hold steady…')).toBeVisible()
+
+    await close(page)
+    await expect(page.locator('dialog.scanner')).toBeHidden()
+    expect(await streamEnded(page)).toBe(true)
+    await expect(page.locator('.code')).toHaveCount(0)
+  })
+}
+
 test('ignores transient detector failures', async ({ page }) => {
   await mockDevice(page, { failFirst: 10 })
-  await page.goto('/')
+  await openScanner(page)
 
   await expect(page.locator('.code')).toHaveText(CODE, { timeout: 10000 })
   await expect(page.locator('.error')).toHaveCount(0)
@@ -88,7 +121,7 @@ test('ignores transient detector failures', async ({ page }) => {
 
 test('shows an error and stops the camera when the detector keeps failing', async ({ page }) => {
   await mockDevice(page, { failFirst: null })
-  await page.goto('/')
+  await openScanner(page)
 
   await expect(page.locator('.error')).toHaveText('Scanner stopped working: decoder crashed', { timeout: 10000 })
   expect(await cameraIsLive(page)).toBe(false)
@@ -97,7 +130,7 @@ test('shows an error and stops the camera when the detector keeps failing', asyn
 test('try again recovers after the detector stopped working', async ({ page }) => {
   // Fails exactly long enough to trigger the error, then works
   await mockDevice(page, { failFirst: 60 })
-  await page.goto('/')
+  await openScanner(page)
   await page.getByRole('button', { name: 'Try again' }).click({ timeout: 10000 })
 
   await expect(page.locator('.error')).toHaveCount(0)
@@ -110,7 +143,7 @@ test('native engine never downloads ZXing', async ({ page }) => {
     if (/ponyfill|\.wasm/.test(r.url())) zxingRequests.push(r.url())
   })
   await mockDevice(page)
-  await page.goto('/')
+  await openScanner(page)
 
   await expect(page.getByText('Engine: native')).toBeVisible()
   await expect(page.getByText('Hold steady…')).toBeVisible()
@@ -119,7 +152,7 @@ test('native engine never downloads ZXing', async ({ page }) => {
 
 test('ZXing engine starts downloading the WASM before the camera is ready', async ({ page }) => {
   await mockDevice(page, { detector: 'none', cameraDelayMs: 1500 })
-  await page.goto('/')
+  await openScanner(page)
 
   await expect(page.getByText('Point the camera at a barcode')).toBeVisible({ timeout: 10000 })
   await expect(page.getByText('Engine: zxing-wasm')).toBeVisible()
@@ -133,7 +166,7 @@ test('ZXing engine starts downloading the WASM before the camera is ready', asyn
 test('shows an error instead of a blank screen when rendering crashes', async ({ page }) => {
   // An object is not a valid React child, so rendering the result throws
   await mockDevice(page, { format: { broken: true } })
-  await page.goto('/')
+  await openScanner(page)
 
   await expect(page.locator('.error')).toContainText('Something went wrong', { timeout: 10000 })
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
@@ -142,7 +175,7 @@ test('shows an error instead of a blank screen when rendering crashes', async ({
 test('in landscape the scan area fits inside the camera view', async ({ page }) => {
   await page.setViewportSize({ width: 844, height: 390 })
   await mockDevice(page)
-  await page.goto('/')
+  await openScanner(page)
   await expect(page.locator('.guide')).toBeVisible()
 
   const { view, guide } = await page.evaluate(() => ({
@@ -157,7 +190,7 @@ test('in landscape the scan area fits inside the camera view', async ({ page }) 
 
 test('in portrait the scan area takes 80% of the camera width', async ({ page }) => {
   await mockDevice(page)
-  await page.goto('/')
+  await openScanner(page)
   await expect(page.locator('.guide')).toBeVisible()
 
   const ratio = await page.evaluate(
@@ -168,7 +201,7 @@ test('in portrait the scan area takes 80% of the camera width', async ({ page })
 
 test('only asks the detector for linear barcodes, not QR or other 2D codes', async ({ page }) => {
   await mockDevice(page)
-  await page.goto('/')
+  await openScanner(page)
   await expect(page.getByText('Hold steady…')).toBeVisible()
 
   const formats = await page.evaluate(() => window.__formats)
@@ -179,7 +212,7 @@ test('only asks the detector for linear barcodes, not QR or other 2D codes', asy
 test('cancels the confirmation while the code keeps moving', async ({ page }) => {
   // 100px on a 200px wide code: well over the tolerance
   await mockDevice(page, { jitter: 100 })
-  await page.goto('/')
+  await openScanner(page)
   await expect(page.getByText('Engine: native')).toBeVisible()
 
   // Longer than CONFIRM_MS: a still code would be confirmed by now
@@ -190,14 +223,14 @@ test('cancels the confirmation while the code keeps moving', async ({ page }) =>
 test('small hand tremor does not cancel the confirmation', async ({ page }) => {
   // 10px on a 200px wide code: inside the tolerance
   await mockDevice(page, { jitter: 10 })
-  await page.goto('/')
+  await openScanner(page)
 
   await expect(page.locator('.code')).toHaveText(CODE, { timeout: 6000 })
 })
 
 test('debug mode outlines the analyzed area over the scan guide', async ({ page }) => {
   await mockDevice(page, { detector: 'none' }) // real ZXing finds nothing in a blank frame, so the guide stays visible
-  await page.goto('/?debug')
+  await openScanner(page, '/?debug')
   await expect(page.locator('.debug-info')).toContainText('video 1280x720')
 
   const [crop, guide] = await Promise.all(
@@ -209,7 +242,7 @@ test('debug mode outlines the analyzed area over the scan guide', async ({ page 
 
 test('debug overlay is hidden without ?debug', async ({ page }) => {
   await mockDevice(page)
-  await page.goto('/')
+  await openScanner(page)
   await expect(page.getByText('Hold steady…')).toBeVisible()
   await expect(page.locator('.debug')).toHaveCount(0)
 })
