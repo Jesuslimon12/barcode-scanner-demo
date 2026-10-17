@@ -11,7 +11,13 @@ body {
   color: #fff;
 }
 
-::selection { background: #ffd60a; color: #000; }
+:root { --demo-accent: #0071e3; --demo-on-accent: #fff; }
+/* Igual que el escáner: amarillo de la cámara en iOS, azul en el resto */
+@supports (-webkit-touch-callout: none) {
+  :root { --demo-accent: #ffd60a; --demo-on-accent: #000; }
+}
+
+::selection { background: var(--demo-accent); color: var(--demo-on-accent); }
 
 .demo {
   display: grid;
@@ -22,7 +28,7 @@ body {
   padding: 16px;
 }
 
-/* Mismo amarillo y forma de cápsula que el botón del escáner */
+/* Mismo color y forma de cápsula que el botón del escáner */
 .demo > button {
   display: inline-flex;
   align-items: center;
@@ -31,8 +37,8 @@ body {
   padding: 0 24px;
   border: 0;
   border-radius: 999px;
-  background: #ffd60a;
-  color: #000;
+  background: var(--demo-accent);
+  color: var(--demo-on-accent);
   font: inherit;
   font-size: 1.0625rem;
   font-weight: 600;

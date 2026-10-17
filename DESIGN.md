@@ -6,8 +6,8 @@ The scanner's default look follows the iOS Camera app's code scanning: the camer
 
 | Role | Token | Default | Use |
 |---|---|---|---|
-| Accent | `--bsm-accent` | `#ffd60a` | Retry button, confirmation ring, text selection. Nothing else. |
-| On accent | `--bsm-on-accent` | `#000` | Text on the accent (14.9:1). |
+| Accent | `--bsm-accent` | `#ffd60a` on iOS, `#0071e3` elsewhere | Action button, confirmation ring, text selection. Nothing else. |
+| On accent | `--bsm-on-accent` | `#000` on iOS, `#fff` elsewhere | Text on the accent (14.9:1 and 4.7:1). |
 | Background / surface | `--bsm-background`, `--bsm-surface` | `#000` | Modal and control area: no grey panel, the feed meets black. |
 | Text | `--bsm-text` | `#fff` | The scanned code, focus ring. |
 | Secondary text | `--bsm-text-muted` | `#98989d` | Status hints. |
@@ -17,7 +17,7 @@ Over the camera, white with a soft dark drop shadow (guide corners, ring track) 
 
 ## Type
 
-System stack (`-apple-system, system-ui`), set through `--bsm-font`. Status text at 1.0625em, the code in the system monospace at 1.25em with tabular numerals. Sizes are relative so the modal follows the host's and the user's text size.
+System stack (`-apple-system, system-ui`), set through `--bsm-font`. Status text at 1.0625em, the code at 1.25em in the same typeface with tabular numerals. Every theme uses one typeface for status text, the code and the button, and the button is the same size in every theme. Sizes are relative so the modal follows the host's and the user's text size.
 
 ## Shape
 
@@ -31,7 +31,7 @@ Zoom toward the code (300ms ease-out), guide fade on lock (200ms), the ring fill
 
 ## Demo page
 
-Same palette: yellow capsule "Scan barcode" with a barcode glyph. The read is shown inside the modal, over a still of the scanned frame, with a "Scan again" button; the demo page shows no result.
+Same palette: capsule "Scan barcode" with a barcode glyph, yellow on iOS and blue elsewhere (`@supports (-webkit-touch-callout: none)` detects iOS WebKit). The read is shown inside the modal, over a still of the scanned frame, with a "Use this code" button that hands it to `onScan`; the demo page shows no result.
 
 ## Themes
 
@@ -39,7 +39,7 @@ Same palette: yellow capsule "Scan barcode" with a barcode glyph. The read is sh
 
 | Theme | Panel | Accent / on accent | Error | Signature |
 |---|---|---|---|---|
-| `standard` (default) | `#000` | `#ffd60a` / `#000` | `#ff453a` | iOS Camera: corner brackets, capsule button. |
+| `standard` (default) | `#000` | `#ffd60a` / `#000` on iOS, `#0071e3` / `#fff` elsewhere | `#ff453a` | iOS Camera: corner brackets, capsule button. |
 | `shelf` | `#ffd60a` with ink top rule | `#141414` / `#ffd60a` | `#b3120a` bold | Shelf-edge strip; the code on a white price tag. |
 | `receipt` | `#f4f1ea` thermal paper, torn top edge | `#2b2b2b` / `#f4f1ea` | `#c23b22` | Monospace throughout, dashed guide. |
 | `datamatics` | `#fff` | `#000` / `#fff` | inverted block, white on black | Pure black and white, 1px guide, square corners. |

@@ -25,7 +25,7 @@ const DEFAULT_LABELS = {
   aim: 'Point the camera at a barcode',
   holdSteady: 'Hold steady…',
   retry: 'Try again',
-  scanAgain: 'Scan again',
+  useCode: 'Use this code',
   errorPermission: 'Camera access is blocked. Allow the camera for this site in your browser settings, then try again.',
   errorNoCamera: 'No camera was found. Connect a camera or use a device that has one.',
   errorCameraBusy: 'The camera is in use by another app. Close that app, then try again.',
@@ -148,11 +148,6 @@ function Scanner({ onScan, onRetry, debug, labels }) {
   // phase: starting (iniciando) | scanning (escaneando) | result (resultado, con code y format) | error (con label, la clave del texto)
   const [state, setState] = useState({ phase: 'starting' })
   const { phase } = state
-  // El efecto corre una sola vez: se guarda el último onScan para no llamar a uno viejo
-  const onScanRef = useRef(onScan)
-  useEffect(() => {
-    onScanRef.current = onScan
-  })
 
   useEffect(() => {
     const video = videoRef.current
@@ -196,8 +191,7 @@ function Scanner({ onScan, onRetry, debug, labels }) {
       stream?.getTracks().forEach((t) => t.stop()) // con el código leído la cámara ya no hace falta
       // ponytail: vibración desactivada; no existe en iOS y en Android requiere que el usuario haya tocado la página.
       // Para activarla: navigator.vibrate?.(80)
-      setState({ phase: 'result', code: lock.code, format: lock.format })
-      onScanRef.current?.(lock.code, lock.format)
+      setState({ phase: 'result', code: lock.code, format: lock.format }) // la app lo recibe recién cuando el usuario lo acepta
     }
 
     // Se llama cada vez que el detector encuentra un código dentro del recuadro
@@ -335,8 +329,10 @@ function Scanner({ onScan, onRetry, debug, labels }) {
         {/* El formato (p. ej. ean_13) es un dato para la app, que lo recibe en onScan; no se muestra */}
         {phase === 'result' && (
           <>
-            <p className="bsm-code">{state.code}</p>
-            <button onClick={onRetry}>{labels.scanAgain}</button>
+            <p className="bsm-code" style={{ '--len': state.code.length }}>
+              {state.code}
+            </p>
+            <button onClick={() => onScan?.(state.code, state.format)}>{labels.useCode}</button>
           </>
         )}
       </section>
@@ -344,7 +340,7 @@ function Scanner({ onScan, onRetry, debug, labels }) {
   )
 }
 
-// Modal a pantalla completa que escanea un código de barras y lo devuelve con onScan(code, format).
+// Modal a pantalla completa que escanea un código de barras y lo devuelve con onScan(code, format) cuando el usuario toca "Use this code".
 // open lo controla el padre; onClose se llama al tocar la X o con Escape. La cámara solo se enciende mientras está abierto.
 // debug marca el área analizada (rojo) y el código detectado (verde); la app decide cuándo activarlo.
 // labels reemplaza cualquier texto de DEFAULT_LABELS, p. ej. labels={{ title: 'Escanear código' }}.

@@ -84,7 +84,20 @@ test('hands the code and format to the host through onScan', async ({ page }) =>
   await openScanner(page)
 
   await expect(page.locator('.bsm-code')).toHaveText(CODE, { timeout: 10000 })
+  expect(scans).toEqual([]) // nothing reaches the host until the user accepts the code
+  await page.getByRole('button', { name: 'Use this code' }).click()
+
   expect(scans).toEqual([`Scanned ${CODE} ean_13`])
+  await expect(page.locator('dialog.bsm-scanner')).toBeHidden()
+})
+
+test('outside iOS the standard theme uses the system blue', async ({ page }) => {
+  await mockDevice(page, { failFirst: null })
+  await openScanner(page)
+  const retry = page.getByRole('button', { name: 'Try again' })
+  await expect(retry).toBeVisible({ timeout: 10000 })
+
+  expect(await retry.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(0, 113, 227)')
 })
 
 test('keeps a still of the scanned frame after the camera stops', async ({ page }) => {
@@ -104,7 +117,8 @@ test('can scan again after a code was returned', async ({ page }) => {
   await mockDevice(page)
   await openScanner(page)
   await expect(page.locator('.bsm-code')).toHaveText(CODE, { timeout: 10000 })
-  await page.getByRole('button', { name: 'Scan again' }).click()
+  await page.getByRole('button', { name: 'Use this code' }).click()
+  await page.getByRole('button', { name: 'Scan barcode' }).click()
 
   await expect(page.getByText('Hold steady…')).toBeVisible()
 })
@@ -505,3 +519,46 @@ test('themes with their own accent change the retry button', async ({ page }) =>
 
   expect(await retryBackground('Shelf')).not.toBe(await retryBackground('Standard'))
 })
+
+for (const theme of ['Standard', 'Shelf', 'Receipt', 'Datamatics', 'Coupon']) {
+  test(`${theme}: the read code and the button use the theme's typeface`, async ({ page }) => {
+    await mockDevice(page)
+    await page.goto('/')
+    await page.getByLabel(theme).check()
+    await page.getByRole('button', { name: 'Scan barcode' }).click()
+    await expect(page.locator('.bsm-code')).toHaveText(CODE, { timeout: 10000 })
+
+    const font = (sel) => page.locator(sel).evaluate((el) => getComputedStyle(el).fontFamily)
+    const typeface = await font('dialog.bsm-scanner')
+    expect(await font('.bsm-code')).toBe(typeface)
+    expect(await font('.bsm-panel button')).toBe(typeface)
+  })
+
+  test(`${theme}: a long code shrinks to fit on one line`, async ({ page }) => {
+    const long = '0123456789ABCDEF0123456789AB' // 28 characters, e.g. a Code 128 label
+    await mockDevice(page, { code: long, format: 'code_128' })
+    await page.goto('/')
+    await page.getByLabel(theme).check()
+    await page.getByRole('button', { name: 'Scan barcode' }).click()
+    const code = page.locator('.bsm-code')
+    await expect(code).toHaveText(long, { timeout: 10000 })
+
+    const lines = await code.evaluate((el) => {
+      const range = document.createRange()
+      range.selectNodeContents(el)
+      return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size
+    })
+    expect(lines).toBe(1)
+  })
+
+  test(`${theme}: the Use this code button has the same size as in the standard theme`, async ({ page }) => {
+    await mockDevice(page)
+    await page.goto('/')
+    await page.getByLabel(theme).check()
+    await page.getByRole('button', { name: 'Scan barcode' }).click()
+    const box = await page.getByRole('button', { name: 'Use this code' }).boundingBox({ timeout: 10000 })
+
+    // iPhone 15 viewport (393px) minus the 16px gutters; 50px tall
+    expect([Math.round(box.width), Math.round(box.height)]).toEqual([361, 50])
+  })
+}

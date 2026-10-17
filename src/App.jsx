@@ -34,8 +34,11 @@ export default function App() {
         debug={debug}
         theme={theme}
         onClose={() => setOpen(false)}
-        // La app recibe el código y el formato; la demo solo los deja en la consola
-        onScan={(code, format) => console.info('Scanned', code, format)}
+        // La app recibe el código y el formato; la demo los deja en la consola y cierra el escáner
+        onScan={(code, format) => {
+          console.info('Scanned', code, format)
+          setOpen(false)
+        }}
       />
     </main>
   )
