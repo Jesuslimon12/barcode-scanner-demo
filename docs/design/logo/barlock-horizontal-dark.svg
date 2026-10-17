@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 236 64" role="img" aria-labelledby="t"><title id="t">Barlock</title>
+<rect width="64" height="64" rx="14" fill="#000"/>
+<path d="M18.5 54V24a13.5 13.5 0 0 1 27 0v30" fill="none" stroke="#ffd60a" stroke-width="5"/><path fill="#fff" d="M23.5 30h2v24h-2zM27 30h3v24h-3zM31.5 30H33v24h-1.5zM34.5 30h3v24h-3zM39 30h1.5v24H39z"/>
+<text x="78" y="46" fill="#fff" font-family="-apple-system, system-ui, 'Segoe UI', Roboto, sans-serif" font-size="40" letter-spacing="-1.2"><tspan font-weight="800">bar</tspan><tspan font-weight="400">lock</tspan></text>
+</svg>
