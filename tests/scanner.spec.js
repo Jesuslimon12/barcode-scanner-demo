@@ -7,10 +7,11 @@ const CODE = '7501234567890'
 // failFirst: number of detect() calls that throw before it starts returning CODE (null = always throws).
 // cameraDelayMs: simulates the time the user takes to grant camera permission.
 // format: value reported as the barcode format.
+// code: value reported as the barcode text.
 // jitter: pixels the code shifts sideways on every other frame (simulates a moving phone).
-async function mockDevice(page, { detector = 'fake', failFirst = 0, cameraDelayMs = 0, format = 'ean_13', jitter = 0 } = {}) {
+async function mockDevice(page, { detector = 'fake', failFirst = 0, cameraDelayMs = 0, format = 'ean_13', jitter = 0, code = CODE } = {}) {
   await page.addInitScript(
-    ({ detector, failFirst, cameraDelayMs, format, jitter, CODE }) => {
+    ({ detector, failFirst, cameraDelayMs, format, jitter, code }) => {
       const canvas = document.createElement('canvas')
       canvas.width = 1280
       canvas.height = 720
@@ -41,11 +42,11 @@ async function mockDevice(page, { detector = 'fake', failFirst = 0, cameraDelayM
           const calls = Number(sessionStorage.getItem('detectCalls') ?? 0)
           sessionStorage.setItem('detectCalls', calls + 1)
           if (failFirst === null || calls < failFirst) throw new Error('decoder crashed')
-          return [{ rawValue: CODE, format, boundingBox: { x: 100 + (calls % 2) * jitter, y: 40, width: 200, height: 60 } }]
+          return [{ rawValue: code, format, boundingBox: { x: 100 + (calls % 2) * jitter, y: 40, width: 200, height: 60 } }]
         }
       }
     },
-    { detector, failFirst, cameraDelayMs, format, jitter, CODE },
+    { detector, failFirst, cameraDelayMs, format, jitter, code },
   )
 }
 
@@ -71,27 +72,49 @@ test('confirms a code only after holding it for the full confirmation time', asy
 
   // Still confirming halfway through
   await page.waitForTimeout(1500)
-  await expect(page.locator('.code')).toHaveCount(0)
+  await expect(page.locator('.bsm-code')).toHaveCount(0)
 
-  await expect(page.locator('.code')).toHaveText(CODE, { timeout: 5000 })
-  await expect(page.getByText('ean_13')).toBeVisible()
+  await expect(page.locator('.bsm-code')).toHaveText(CODE, { timeout: 5000 })
+})
+
+test('hands the code and format to the host through onScan', async ({ page }) => {
+  const scans = []
+  page.on('console', (m) => m.text().startsWith('Scanned') && scans.push(m.text()))
+  await mockDevice(page)
+  await openScanner(page)
+
+  await expect(page.locator('.bsm-code')).toHaveText(CODE, { timeout: 10000 })
+  expect(scans).toEqual([`Scanned ${CODE} ean_13`])
+})
+
+test('keeps a still of the scanned frame after the camera stops', async ({ page }) => {
+  await mockDevice(page)
+  await openScanner(page)
+  await expect(page.locator('.bsm-code')).toHaveText(CODE, { timeout: 10000 })
+  expect(await streamEnded(page)).toBe(true)
+
+  const still = page.locator('canvas.bsm-still')
+  await expect(still).toBeVisible()
+  // The mocked camera paints #556: the still holds that frame, not a blank canvas
+  const pixel = await still.evaluate((c) => [...c.getContext('2d').getImageData(c.width / 2, c.height / 2, 1, 1).data])
+  expect(pixel).toEqual([0x55, 0x55, 0x66, 255])
 })
 
 test('can scan again after a code was returned', async ({ page }) => {
   await mockDevice(page)
   await openScanner(page)
-  await expect(page.locator('.code')).toHaveText(CODE, { timeout: 10000 })
-  await page.getByRole('button', { name: 'Scan barcode' }).click()
+  await expect(page.locator('.bsm-code')).toHaveText(CODE, { timeout: 10000 })
+  await page.getByRole('button', { name: 'Scan again' }).click()
 
   await expect(page.getByText('Hold steady…')).toBeVisible()
 })
 
-test('returns the code to the host, closes the modal and stops the camera', async ({ page }) => {
+test('shows the code inside the modal, not on the page, and stops the camera', async ({ page }) => {
   await mockDevice(page)
   await openScanner(page)
 
-  await expect(page.locator('.code')).toHaveText(CODE, { timeout: 10000 })
-  await expect(page.locator('dialog.bsm-scanner')).toBeHidden()
+  await expect(page.getByRole('dialog').locator('.bsm-code')).toHaveText(CODE, { timeout: 10000 })
+  await expect(page.locator('main > :not(dialog)').getByText(CODE)).toHaveCount(0)
   expect(await streamEnded(page)).toBe(true)
 })
 
@@ -107,7 +130,7 @@ for (const [how, close] of [
     await close(page)
     await expect(page.locator('dialog.bsm-scanner')).toBeHidden()
     expect(await streamEnded(page)).toBe(true)
-    await expect(page.locator('.code')).toHaveCount(0)
+    await expect(page.locator('.bsm-code')).toHaveCount(0)
   })
 }
 
@@ -115,7 +138,7 @@ test('ignores transient detector failures', async ({ page }) => {
   await mockDevice(page, { failFirst: 10 })
   await openScanner(page)
 
-  await expect(page.locator('.code')).toHaveText(CODE, { timeout: 10000 })
+  await expect(page.locator('.bsm-code')).toHaveText(CODE, { timeout: 10000 })
   await expect(page.locator('.bsm-error')).toHaveCount(0)
 })
 
@@ -202,7 +225,7 @@ test('try again recovers after the detector stopped working', async ({ page }) =
   await page.getByRole('button', { name: 'Try again' }).click({ timeout: 10000 })
 
   await expect(page.locator('.bsm-error')).toHaveCount(0)
-  await expect(page.locator('.code')).toHaveText(CODE, { timeout: 10000 })
+  await expect(page.locator('.bsm-code')).toHaveText(CODE, { timeout: 10000 })
 })
 
 test('native engine never downloads ZXing', async ({ page }) => {
@@ -319,7 +342,7 @@ test('a host can theme the scanner from any ancestor', async ({ page }) => {
 
 test('shows an error instead of a blank screen when rendering crashes', async ({ page }) => {
   // An object is not a valid React child, so rendering the result throws
-  await mockDevice(page, { format: { broken: true } })
+  await mockDevice(page, { code: { broken: true } })
   await openScanner(page)
 
   await expect(page.locator('.error')).toContainText('Something went wrong', { timeout: 10000 })
@@ -371,7 +394,7 @@ test('cancels the confirmation while the code keeps moving', async ({ page }) =>
 
   // Longer than CONFIRM_MS: a still code would be confirmed by now
   await page.waitForTimeout(4500)
-  await expect(page.locator('.code')).toHaveCount(0)
+  await expect(page.locator('.bsm-code')).toHaveCount(0)
 })
 
 test('small hand tremor does not cancel the confirmation', async ({ page }) => {
@@ -379,7 +402,7 @@ test('small hand tremor does not cancel the confirmation', async ({ page }) => {
   await mockDevice(page, { jitter: 10 })
   await openScanner(page)
 
-  await expect(page.locator('.code')).toHaveText(CODE, { timeout: 6000 })
+  await expect(page.locator('.bsm-code')).toHaveText(CODE, { timeout: 6000 })
 })
 
 test('debug mode outlines the analyzed area over the scan guide', async ({ page }) => {

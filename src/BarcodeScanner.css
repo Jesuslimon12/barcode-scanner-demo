@@ -49,7 +49,8 @@
   container-type: size; /* permite medir el recuadro con cqw/cqh */
 }
 
-.bsm-scanner .bsm-viewport video {
+.bsm-scanner .bsm-viewport video,
+.bsm-scanner .bsm-viewport .bsm-still {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -185,6 +186,7 @@
    llenándose porque es la única señal de progreso de la confirmación. */
 @media (prefers-reduced-motion: reduce) {
   .bsm-scanner .bsm-viewport video,
+  .bsm-scanner .bsm-viewport .bsm-still,
   .bsm-scanner .bsm-debug {
     transform: none !important; /* el transform se escribe inline desde JS en cada detección */
     transition: none;
@@ -267,6 +269,10 @@
   line-height: 1;
   letter-spacing: -0.01em;
 }
+/* En el panel lateral angosto un EAN-13 a 2.5em se parte en dos líneas */
+@media (orientation: landscape) {
+  .bsm-scanner[data-theme='shelf'] .bsm-panel .bsm-code { font-size: 2em; }
+}
 .bsm-scanner[data-theme='shelf'] .bsm-panel button {
   border-radius: var(--bsm-radius, 2px);
   font-weight: 800;
@@ -344,6 +350,10 @@
   font-family: inherit;
   font-weight: 700;
   font-size: 2em;
+}
+/* Igual que shelf: en el panel lateral el EAN-13 tiene que entrar en una línea */
+@media (orientation: landscape) {
+  .bsm-scanner[data-theme='datamatics'] .bsm-panel .bsm-code { font-size: 1.75em; }
 }
 .bsm-scanner[data-theme='datamatics'] .bsm-panel button {
   border-radius: var(--bsm-radius, 0);

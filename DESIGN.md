@@ -31,7 +31,7 @@ Zoom toward the code (300ms ease-out), guide fade on lock (200ms), the ring fill
 
 ## Demo page
 
-Same palette: yellow capsule "Scan barcode" with a barcode glyph, result in an inset grouped list (`#1c1c1e`, hairline separators) like iOS Settings.
+Same palette: yellow capsule "Scan barcode" with a barcode glyph. The read is shown inside the modal, over a still of the scanned frame, with a "Scan again" button; the demo page shows no result.
 
 ## Themes
 

@@ -7,11 +7,10 @@ const debug = new URLSearchParams(location.search).has('debug')
 // Estilos del escáner que se pueden probar en la demo: valor de la prop theme → texto del selector
 const THEMES = { standard: 'Standard', shelf: 'Shelf', receipt: 'Receipt', datamatics: 'Datamatics', coupon: 'Coupon' }
 
-// Demo: elige el estilo, abre el escáner y muestra el código que devuelve
+// Demo: elige el estilo y abre el escáner; el código leído se muestra dentro del modal
 export default function App() {
   const [open, setOpen] = useState(false)
   const [theme, setTheme] = useState('standard')
-  const [result, setResult] = useState(null) // { code, format }
 
   return (
     <main className="demo">
@@ -30,27 +29,13 @@ export default function App() {
         </svg>
         Scan barcode
       </button>
-      {result && (
-        <dl className="result">
-          <div>
-            <dt>Code</dt>
-            <dd className="code">{result.code}</dd>
-          </div>
-          <div>
-            <dt>Format</dt>
-            <dd>{result.format}</dd>
-          </div>
-        </dl>
-      )}
       <BarcodeScannerModal
         open={open}
         debug={debug}
         theme={theme}
         onClose={() => setOpen(false)}
-        onScan={(code, format) => {
-          setResult({ code, format })
-          setOpen(false)
-        }}
+        // La app recibe el código y el formato; la demo solo los deja en la consola
+        onScan={(code, format) => console.info('Scanned', code, format)}
       />
     </main>
   )

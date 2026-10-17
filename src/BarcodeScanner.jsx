@@ -25,6 +25,7 @@ const DEFAULT_LABELS = {
   aim: 'Point the camera at a barcode',
   holdSteady: 'Hold steady…',
   retry: 'Try again',
+  scanAgain: 'Scan again',
   errorPermission: 'Camera access is blocked. Allow the camera for this site in your browser settings, then try again.',
   errorNoCamera: 'No camera was found. Connect a camera or use a device that has one.',
   errorCameraBusy: 'The camera is in use by another app. Close that app, then try again.',
@@ -142,6 +143,7 @@ function Scanner({ onScan, onRetry, debug, labels }) {
   const videoRef = useRef(null)
   const viewRef = useRef(null)
   const debugRef = useRef(null)
+  const stillRef = useRef(null)
   const [locked, setLocked] = useState(null) // código detectado actualmente, o null
   // phase: starting (iniciando) | scanning (escaneando) | result (resultado, con code y format) | error (con label, la clave del texto)
   const [state, setState] = useState({ phase: 'starting' })
@@ -185,6 +187,13 @@ function Scanner({ onScan, onRetry, debug, labels }) {
       }
       paused = true
       video.pause()
+      // Copia el último cuadro antes de apagar la cámara: al frenarla, el video queda en negro en iOS y Android
+      const still = stillRef.current
+      still.width = video.videoWidth
+      still.height = video.videoHeight
+      still.getContext('2d').drawImage(video, 0, 0)
+      still.style.transform = video.style.transform // mismo zoom que tenía el video
+      stream?.getTracks().forEach((t) => t.stop()) // con el código leído la cámara ya no hace falta
       // ponytail: vibración desactivada; no existe en iOS y en Android requiere que el usuario haya tocado la página.
       // Para activarla: navigator.vibrate?.(80)
       setState({ phase: 'result', code: lock.code, format: lock.format })
@@ -294,6 +303,7 @@ function Scanner({ onScan, onRetry, debug, labels }) {
       <div className="bsm-viewport" ref={viewRef}>
         {/* ponytail: zoom solo visual; el zoom de la cámara agregaría resolución pero mueve la posición del código */}
         <video ref={videoRef} playsInline muted />
+        <canvas ref={stillRef} className="bsm-still" hidden={phase !== 'result'} aria-hidden="true" />
         {debug && (
           <>
             <div className="bsm-debug" ref={debugRef} aria-hidden="true">
@@ -323,7 +333,12 @@ function Scanner({ onScan, onRetry, debug, labels }) {
           </>
         )}
         {/* El formato (p. ej. ean_13) es un dato para la app, que lo recibe en onScan; no se muestra */}
-        {phase === 'result' && <p className="bsm-code">{state.code}</p>}
+        {phase === 'result' && (
+          <>
+            <p className="bsm-code">{state.code}</p>
+            <button onClick={onRetry}>{labels.scanAgain}</button>
+          </>
+        )}
       </section>
     </>
   )
